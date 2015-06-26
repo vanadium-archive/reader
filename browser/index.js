@@ -1,29 +1,23 @@
 // Copyright 2015 The Vanadium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
+
 var domready = require('domready')
 var hg = require('mercury')
 var h = require('mercury').h
+var pdf = require('./components/pdf')
 
 domready(function ondomready() {
-  // Temporary state until components are set up
+  // Top level state.
   var state = hg.state({
-    count: hg.value(0),
-    channels: {
-      click: increment
-    }
+    pdf: pdf.state()
   })
 
   hg.app(document.body, state, render);
 })
 
 function render(state) {
-  return h('.count', {
-    'ev-click': hg.send(state.channels.click),
-  }, 'Count: ' + state.count)
-}
-
-function increment(state) {
-  var current = state.count()
-  state.count.set(current + 1)
+  return h('div', [
+    hg.partial(pdf.render, state.pdf, state.pdf.channels)
+  ])
 }
