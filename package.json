@@ -1,0 +1,22 @@
+{
+  "name": "reader",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Vanadium reader example application.",
+  "scripts": {
+    "test": "make test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://vanadium.googlesource.com/release.projects.reader"
+  },
+  "license": "BSD",
+  "devDependencies": {
+    "browserify": "^10.2.4",
+    "st": "^0.5.4"
+  },
+  "dependencies": {
+    "domready": "^1.0.8",
+    "mercury": "^14.0.0"
+  }
+}

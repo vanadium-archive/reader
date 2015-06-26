@@ -1,1 +1,4 @@
 /.v23
+node_modules
+npm-debug.log
+public/bundle.*
