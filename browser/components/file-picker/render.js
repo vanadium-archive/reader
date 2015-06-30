@@ -4,13 +4,15 @@
 
 var hg = require('mercury')
 var h = require('mercury').h
-var PDFWidget = require('../../widgets/pdf-widget')
 var sendFile = require('../../events/send-file')
 
 module.exports = render
 
 function render(state, channels) {
-  return h('.pdf', [
-    PDFWidget(state.pdf, state.pageNum)
+  return h('.file-picker', [
+    h('input', {
+      type: 'file',
+      'ev-event': sendFile(channels.set)
+    })
   ])
 }

@@ -9,6 +9,7 @@ module.exports = state
 function state(options) {
   var state = hg.state({
     pdf: hg.value(null),
+    pageNum: hg.value(1),
     channels: {
       set: set
     }
@@ -60,6 +61,7 @@ function set(state, data) {
 
   function success(pdf) {
     state.pdf.set(pdf)
+    state.pageNum.set(1)
   }
 
   function error(err) {

@@ -4,12 +4,13 @@
 module.exports = PDFWidget
 
 // TODO(jasoncampebll): add verification for pdf object
-function PDFWidget(pdf) {
+function PDFWidget(pdf, pageNum) {
   if (!(this instanceof PDFWidget)) {
-    return new PDFWidget(pdf);
+    return new PDFWidget(pdf, pageNum);
   }
 
   this.pdf = pdf
+  this.pageNum = pageNum
 }
 
 PDFWidget.prototype.type = 'Widget';
@@ -25,6 +26,7 @@ PDFWidget.prototype.init = function init() {
 PDFWidget.prototype.update = function update(previous, element) {
   var widget = this
   var pdf = widget.pdf
+  var pageNum = widget.pageNum
 
   if (!pdf) {
     return
@@ -32,7 +34,7 @@ PDFWidget.prototype.update = function update(previous, element) {
 
   console.log('pdf', pdf)
 
-  pdf.getPage(1).then(function(page) {
+  pdf.getPage(pageNum).then(function(page) {
     var scale = 1.5
     var viewport = page.getViewport(scale)
     var context = element.getContext('2d')
