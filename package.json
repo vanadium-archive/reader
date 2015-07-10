@@ -13,13 +13,22 @@
   "license": "BSD",
   "devDependencies": {
     "browserify": "^10.2.4",
-    "st": "^0.5.4"
+    "proxyquire": "^1.5.0",
+    "st": "^0.5.4",
+    "tape": "^4.0.0"
   },
   "dependencies": {
+    "debug": "^2.2.0",
     "domready": "^1.0.8",
     "extend": "^2.0.1",
+    "format": "~0.2.1",
+    "global": "^4.3.0",
+    "inherits": "^2.0.1",
     "mercury": "^14.0.0",
-    "xtend": "^4.0.0",
-    "format": "~0.2.1"
+    "ms": "^0.7.1",
+    "prr": "^1.0.1",
+    "through2": "^2.0.0",
+    "uuid": "^2.0.1",
+    "xtend": "^4.0.0"
   }
 }
