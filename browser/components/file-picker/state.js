@@ -2,10 +2,10 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-var hg = require('mercury')
+var hg = require('mercury');
 
-module.exports = state
+module.exports = state;
 
 function state(options) {
-  return hg.state()
+  return hg.state();
 }

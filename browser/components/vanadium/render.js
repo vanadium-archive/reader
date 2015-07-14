@@ -2,11 +2,10 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-var hg = require('mercury')
-var h = require('mercury').h
-var format = require('format')
+var h = require('mercury').h;
+var format = require('format');
 
-module.exports = render
+module.exports = render;
 
 function render(state, channels) {
   return h('ul.vanadium', [
@@ -14,8 +13,7 @@ function render(state, channels) {
     h('li', format('status: %s', state.status)),
     h('li', format('error: %s', state.error ? state.error.message : 'none')),
     h('ul.peers', Object.keys(state.peers).map(function(key) {
-      var peer = state.peers[key]
-      return h('li', format('peer: %s', key))
+      return h('li', format('peer: %s', key));
     }))
-  ])
+  ]);
 }

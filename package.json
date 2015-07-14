@@ -13,6 +13,7 @@
   "license": "BSD",
   "devDependencies": {
     "browserify": "^10.2.4",
+    "jshint": "^2.8.0",
     "proxyquire": "^1.5.0",
     "st": "^0.5.4",
     "tape": "^4.0.0"

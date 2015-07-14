@@ -32,7 +32,11 @@ clean:
 	@$(RM) -fr public/bundle.js
 
 .PHONY:
-test: all
+lint: node_modules
+	@jshint .
+
+.PHONY:
+test: lint all
 	@true
 
 .PHONY:
