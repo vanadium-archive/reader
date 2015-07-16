@@ -13,9 +13,12 @@
   "license": "BSD",
   "devDependencies": {
     "browserify": "^10.2.4",
+    "disc": "^1.3.2",
+    "istanbul": "^0.3.17",
     "jshint": "^2.8.0",
-    "proxyquire": "^1.5.0",
+    "raf": "^3.0.0",
     "st": "^0.5.4",
+    "synthetic-dom-events": "git://github.com/Raynos/synthetic-dom-events",
     "tape": "^4.0.0"
   },
   "dependencies": {

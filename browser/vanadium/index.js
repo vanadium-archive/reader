@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+var window = require('global/window');
 var debug = require('debug')('reader:vanadium-wrapper');
 var vanadium = require('vanadium');
 var inherits = require('inherits');
@@ -71,7 +72,9 @@ VanadiumWrapper.prototype.mount = function() {
     wrapper.emit('runtime', runtime);
     wrapper.emit('status', 'initialized');
 
-    window.addEventListener('beforeunload', beforeunload);
+    if (window.addEventListener) {
+      window.addEventListener('beforeunload', beforeunload);
+    }
 
     var server = runtime.newServer();
     var name = wrapper.name();

@@ -11,7 +11,7 @@ var h = require('mercury').h;
 var filePicker = require('./components/file-picker');
 var pageControls = require('./components/page-control');
 var pdf = require('./components/pdf');
-var vanadium = require('./components/vanadium');
+var peers = require('./components/peers');
 
 domready(function ondomready() {
   debug('domready');
@@ -20,12 +20,12 @@ domready(function ondomready() {
   var state = hg.state({
     pdf: pdf.state(),
     pageControls: pageControls.state(),
-    vanadium: vanadium.state()
+    peers: peers.create()
   });
 
   // TODO(jasoncampbell): add an error component for aggregating, logging, and
   // displaying errors in the UI.
-  state.vanadium.error(function(err) {
+  state.peers.error(function(err) {
     throw err;
   });
 
@@ -45,6 +45,10 @@ domready(function ondomready() {
     }
   });
 
+  // TODO(jasoncampbell): Add/couple Vanadium functionality to the state here
+  // instead of inside the peers component so that async paths which are hard to
+  // test/stub can be isolated to the application initialization.
+
   hg.app(document.body, state, render);
 });
 
@@ -52,7 +56,7 @@ function render(state) {
   if (state.pdf.pdf === null) {
     return h('div', [
       hg.partial(filePicker.render, state.pdf, state.pdf.channels),
-      hg.partial(vanadium.render, state.vanadium, state.vanadium.channels)
+      hg.partial(peers.render, state.peers, state.peers.channels)
     ]);
   } else {
     return h('div', [
@@ -61,7 +65,7 @@ function render(state) {
           state.pageControls,
           state.pageControls.channels),
       hg.partial(pdf.render, state.pdf, state.pdf.channels),
-      hg.partial(vanadium.render, state.vanadium, state.vanadium.channels)
+      hg.partial(peers.render, state.peers, state.peers.channels)
     ]);
   }
 }

@@ -25,6 +25,8 @@
 
   "globals": {
     "PDFJS": false,
-    "window": true
+    "window": true,
+    "event": true,
+    "document": true
   }
 }

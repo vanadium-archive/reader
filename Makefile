@@ -36,8 +36,15 @@ lint: node_modules
 	@jshint .
 
 .PHONY:
-test: lint all
-	@true
+test: lint node_modules
+	tape test/index.js
+
+coverage: $(js_files) node_modules
+	@istanbul cover --report html --print detail ./test/index.js
+	@touch coverage
+
+disk.html: browser/index.js $(js_files) node_modules
+	browserify --full-paths $< | discify > $@
 
 .PHONY:
 start: all

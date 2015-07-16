@@ -2,3 +2,5 @@
 node_modules
 npm-debug.log
 public/bundle.*
+coverage
+disc.html
