@@ -23,7 +23,7 @@ node_modules: package.json
 
 .DELETE_ON_ERROR:
 public/bundle.js: browser/index.js $(js_files) node_modules
-	browserify --debug $< 1> $@
+	@browserify --debug $< 1> $@
 
 .PHONY:
 clean:
@@ -33,6 +33,7 @@ clean:
 
 .PHONY:
 lint: node_modules
+	@dependency-check package.json --entry browser/index.js
 	@jshint .
 
 .PHONY:

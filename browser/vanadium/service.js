@@ -2,21 +2,34 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+var debug = require('debug')('reader:vanadium:service');
+
 module.exports = Service;
 
-function Service(name, wrapper) {
+function Service(client) {
   if (!(this instanceof Service)) {
-    return new Service(name);
+    return new Service(client);
   }
 
-  this._name = name;
-  this._wrapper = wrapper;
+  var service = this;
+
+  // NOTE: Attributes prefixed with an underscore are ignored by the Vanadium
+  // reflection invoker.
+  service._client = client;
 }
 
-// errors are not bublling up into a context that makes sense, for instance
-// serverCall missing here causes problems but there is no where to hook in to
-// grab errors.
+// TODO(jasoncampbell): Explore why exceptions are not bubbling up into a
+// context that makes sense, for instance serverCall missing here causes
+// problems but there is no where to hook in to grab errors since they are only
+// logged by the vanadium module.
+//
+// SEE: https://github.com/vanadium/issues/issues/587
 Service.prototype.announce = function(context, serverCall, name, callback) {
-  this._wrapper.connect(name);
+  var service = this;
+
+  // NOTE: It would be ideal if simply putting to the peer list would do all the
+  // set/connection work automatically.
+  debug('announce called by: %s', name);
+  service._client.emit('service:announce', name);
   callback(null, 'ACK');
 };

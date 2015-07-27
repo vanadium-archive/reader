@@ -7,6 +7,6 @@
 // Wraps Vanadium functionality in a mercury style component so that state can
 // be easily modified, observed, and rendered into the UI as appropriate.
 module.exports = {
-  create: require('./state'),
+  state: require('./state'),
   render: require('./render')
 };

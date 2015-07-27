@@ -15,7 +15,7 @@ function setup(component, callback) {
   var div = document.createElement('div');
   document.body.appendChild(div);
 
-  var state = component.create();
+  var state = component.state();
   var initial = state();
   var remove = hg.app(div, state, render);
 

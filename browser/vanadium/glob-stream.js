@@ -3,7 +3,6 @@
 // license that can be found in the LICENSE file.
 
 var assert = require('assert');
-var extend = require('extend');
 var ms = require('ms');
 var through = require('through2');
 
@@ -13,26 +12,32 @@ module.exports = createStream;
 // present, the stream will recursively call glob until that name is discovered.
 function createStream(options) {
   var found = false;
-  var stream = through.obj(write);
+  var stream = through(write);
+
+  assert.ok(options.name, 'options.name is required');
 
   glob(options, stream, done);
 
   return stream;
 
-  function write(entry, enc, callback) {
-    if (options.name && options.name === entry.name) {
+  function write(buffer, enc, callback) {
+    if (options.name === buffer.toString()) {
       found = true;
     }
 
-    callback(null, entry.name);
+    callback(null, buffer);
   }
 
-  function done(err, results) {
-    // If a name was passed in, recusively glob until it is found.
-    if (options.name && found === false) {
-      glob(options, stream, done);
-    } else {
+  function done(err) {
+    if (err) {
+      stream.emit('error', err);
       stream.end();
+    }
+
+    if (found) {
+      stream.end();
+    } else {
+      glob(options, stream, done);
     }
   }
 }
@@ -40,18 +45,17 @@ function createStream(options) {
 // This function will do a single run of namespace.glob and proxy data events to
 // the passed in stream, the callback will be called when the stream has
 // finished.
+//
+// NOTE: recursive polling of the mountable eats about 10% of my CPU on a
+// macbook air.
 function glob(options, stream, done) {
   assert.ok(options, 'options object is required');
   assert.ok(options.runtime, 'options.runtime is required');
   assert.ok(options.pattern, 'options.pattern is required');
 
-  options = extend({
-    timeout: ms('12s')
-  }, options);
-
   var runtime = options.runtime;
   var namespace = runtime.namespace();
-  var context = runtime.getContext().withTimeout(options.timeout);
+  var context = runtime.getContext().withTimeout(options.timeout || ms('12s'));
   var promise = namespace.glob(context, options.pattern);
 
   promise.catch(function(err) {
@@ -61,7 +65,7 @@ function glob(options, stream, done) {
   // NOTE: The return value from .glob is a promise, to access the stream use
   // the .stream attribute.
   promise.stream.on('data', function onentry(entry) {
-    stream.write(entry);
+    stream.write(entry.name);
   });
 
   // NOTE: Piping namespace.glob streams causes all kinds of errors which do not

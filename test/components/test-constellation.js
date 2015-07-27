@@ -3,22 +3,20 @@
 // license that can be found in the LICENSE file.
 
 var test = require('tape');
-var component = require('../../browser/components/peers');
+var component = require('../../browser/components/constellation');
 var raf = require('raf');
 var query = require('./query');
 var setup = require('./setup');
 var dispatch = require('./dispatch');
 
-test('components/peers - state', function(t) {
-  var state = component.create();
+test('components/constellation - state', function(t) {
+  var state = component.state();
 
-  t.ok(state.id(), 'state should have id');
-  t.equal(state.status(), 'new');
   t.same(state.peers(), {});
   t.end();
 });
 
-test('components/peers - fake test', setup(component, function(t, state){
+test.skip('components/peers - fake test', setup(component, function(t, state){
   t.same(state.peers(), {});
 
   dispatch('click', '.add-peer');

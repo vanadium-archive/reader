@@ -2,208 +2,262 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+var debug = require('debug')('reader:vanadium');
 var window = require('global/window');
-var debug = require('debug')('reader:vanadium-wrapper');
-var vanadium = require('vanadium');
-var inherits = require('inherits');
-var prr = require('prr');
-var EventEmitter = require('events').EventEmitter;
-var Service = require('./service');
 var uuid = require('uuid');
-var extend = require('xtend');
-var assert = require('assert');
-var through = require('through2').obj;
-var defaults = {
-  app: 'reader-example',
-  id: uuid.v4()
-};
-
+var waterfall = require('run-waterfall');
+var vanadium = require('vanadium');
+var EventEmitter = require('events').EventEmitter;
+var service = require('./service');
 var glob = require('./glob-stream');
+var filter = require('./filter-stream');
+var inherits = require('inherits');
+var through = require('through2');
+var ms = require('ms');
+var once = require('once');
+var assert = require('assert');
 
-module.exports = mount;
+module.exports = connect;
 
-function mount(options) {
-  var wrapper = new VanadiumWrapper(options);
+function connect(state) {
+  var client = new Client({ state: state });
 
-  // Kicks off the async Vanadium init, serve, and glob.
-  wrapper.mount();
+  client.discover(function (err, stream) {
+    if (err) {
+      return state.error.set(err);
+    }
 
-  return wrapper;
+    debug('discovery is setup');
+  });
+
+  return client;
 }
 
-function VanadiumWrapper(options) {
-  if (!(this instanceof VanadiumWrapper)) {
-    return new VanadiumWrapper(options);
+function Client(options) {
+  if (!(this instanceof Client)) {
+    return new Client(options);
   }
 
-  var wrapper = this;
+  var client = this;
 
-  wrapper.options = extend(defaults, options);
-  wrapper.runtime = {};
-  wrapper.service = {};
-  wrapper.prefix = '';
+  client.name = '';
+  client.mounted = false;
+  client.runtime = {};
+  client.peers = options.state.peers;
+  client.service = service(client);
 
-  prr(wrapper, 'status', 'new', { enumerable: true });
-  prr(wrapper, 'peers', {}, { enumerable: true });
+  // TODO(jasoncampbell): Come up with a better way to couple the bare service
+  // instance with the client's methods.
+  client.on('service:announce', client.connect.bind(client));
 
-  EventEmitter.call(wrapper);
-
-  wrapper.on('status', onstatus);
+  EventEmitter.call(client);
 }
 
-inherits(VanadiumWrapper, EventEmitter);
+inherits(Client, EventEmitter);
 
-VanadiumWrapper.prototype.mount = function() {
-  var wrapper = this;
+Client.prototype.discover = function(callback) {
+  var client = this;
+  var workers = [
+    client.init.bind(client),
+    client.serve.bind(client),
+    client.glob.bind(client)
+  ];
+
+  waterfall(workers, function done(err, params) {
+    if (err) {
+      return callback(err);
+    }
+
+    client.mounted = true;
+    callback();
+  });
+};
+
+Client.prototype.init = function(callback) {
+  var client = this;
 
   vanadium.init(onruntime);
 
-  function onruntime(err, runtime){
+  function onruntime(err, runtime) {
     if (err) {
-      return wrapper.emit('error', err);
+      return callback(err);
     }
 
-    runtime.on('crash', wrapper.emit.bind(wrapper, 'error'));
+    // TODO(jasoncampbell): When this happens the window really, really needs to
+    // be reloaded. In order to safely reload the page state should be stored or
+    // serialized in a way that makes it recoverable for this error case.
+    runtime.on('crash', function oncrash(err) {
+      debug('runtime crash: %s', err.stack);
+      client.emit('error', err);
+    });
 
-    wrapper.runtime = runtime;
-    wrapper.prefix = prefix(runtime);
+    client.runtime = runtime;
 
-    wrapper.emit('name', wrapper.name());
-    wrapper.emit('runtime', runtime);
-    wrapper.emit('status', 'initialized');
+    return callback(null, runtime);
+  }
+};
 
-    if (window.addEventListener) {
-      window.addEventListener('beforeunload', beforeunload);
+Client.prototype.serve = function(runtime, callback) {
+  var client = this;
+  var service = client.service;
+  var server = runtime.newServer();
+  var name = getName(runtime);
+
+  client.name = name;
+
+  server.serve(name, service, onserve);
+
+  function onserve(err) {
+    if (err) {
+      return callback(err);
     }
 
-    var server = runtime.newServer();
-    var name = wrapper.name();
-    var service = new Service(name, wrapper);
-    var options = {};
+    window.addEventListener = window.addEventListener || noop;
+    window.addEventListener('beforeunload', beforeunload);
 
-    wrapper.server = server;
-
-    debug('serving: %s', name);
-
-    server.serve(name, service, options, onserve);
+    callback(null, runtime);
   }
 
   function beforeunload() {
     debug('closing Vanadium runtime');
+    var namespace = runtime.namespace();
+    var context = runtime.getContext();
 
-    // JShint has a hard time knowing the scope of this function.
-    var namespace = runtime.namespace(); // jshint ignore:line
-    var context = runtime.getContext(); // jshint ignore:line
-
-    namespace.delete(context, wrapper.name(), true, noop);
-    wrapper.server.stop(noop);
-  }
-
-  function onserve(err) {
-    if (err) {
-      return wrapper.emit('error', err);
-    }
-
-    wrapper.emit('status', 'served');
-
-    debug('about to glob');
-
-    glob({
-      name: wrapper.name(),
-      runtime: wrapper.runtime,
-      // NOTE: The pattern * only works at a single depth
-      pattern: wrapper.prefix + '/*/*'
-    })
-    .on('error', function(err) {
-      wrapper.emit('error', err);
-    })
-    .pipe(through(function(name, enc, callback) {
-      if (name === wrapper.name()) {
-        wrapper.emit('status', 'mounted');
-        wrapper.emit('mounted');
-        return callback();
-      } else {
-        return callback(null, name);
-      }
-    }))
-    // maybe filter and emit mount before passing to connect stream, getting the
-    // first mount is slow
-    .pipe(through(function(name, enc, callback) {
-      wrapper.connect(name, callback);
-    }));
+    // TODO(jasoncampbell): Inspect wether or not these methods actually have
+    // time to finish executing, possibly run them in parallel with a callback
+    // that fires an alert to test...
+    namespace.delete(context, name, true, noop);
+    server.stop(noop);
   }
 };
 
-// TODO(jasoncampbell): Do a write up about error propagation problems with glob
-// streams and the way the promises wrapping hides basic syntax/runtime errors
-VanadiumWrapper.prototype.connect = function(name, callback) {
-  var wrapper = this;
-  var runtime = wrapper.runtime;
-  var client = runtime.newClient();
-  var context = runtime.getContext();
+Client.prototype.glob = function(runtime, onmount) {
+  onmount = once(onmount);
 
-  callback = callback || function(err) {
-    if (err) {
-      return wrapper.emit('error', err);
+  var client = this;
+  var peers = client.peers;
+  // Glob pattern based on "<prefix>/reader-example/:uuid"
+  var pattern = prefix(runtime) + '/*/*';
+  var stream = glob({
+    name: client.name,
+    runtime: runtime,
+    pattern: pattern,
+    timeout: ms('12s')
+  });
+
+  stream.on('error', function(err) {
+    debug('glob-stream error: %s', err.stack);
+    client.emit('error', err);
+  });
+
+  stream
+  .pipe(filter(peers))
+  .pipe(through(write))
+  .on('error', function(err) {
+    debug('peer-stream error: %s', err.stack);
+    client.emit('error', err);
+  });
+
+  function write(buffer, enc, cb) {
+    var name = buffer.toString();
+
+    client.connect(name);
+
+    if (name === client.name) {
+      onmount();
     }
-  };
 
-  // TODO(jasoncampbell): it might be a good to actually connect everytime this
-  // is called so that it can be used to refresh any caches, this filter logic
-  // should get moved somewhere else.
-  if (wrapper.peers[name] === 'ignore' || wrapper.peers[name] === 'connected') {
-    return callback();
+    cb(null, buffer);
   }
+};
 
-  debug('connecting to %s', name);
+Client.prototype.connect = function(name) {
+  var client = this;
+  var peers = client.peers;
 
-  client.bindTo(context, name, onremote);
+  assert.ok(name, 'name is required');
 
-  function onremote(err, remote) {
-    if (err) {
-      // It could be a stale entry, if so keep track of it.
-      // TODO(jasoncampbell): find the code check this programatically
-      if (err.id === 'v.io/v23/verror.NoServers') {
-        wrapper.peers[name] = 'ignore';
-        return callback();
-      } else {
-        return callback(err);
-      }
-    }
-
-    wrapper.peers[name] = 'connected';
-    wrapper.emit('connect', name, remote);
-
-    debug('remote connected, announcing %s', name);
-
-    remote.announce(context, wrapper.name(), function(err, response) {
-      if (err) {
-        return callback(err);
-      }
-
-      debug('announced to %s', name);
-      debug('response: "%s"', response);
-      callback();
+  // No need to connect to the local service.
+  if (!peers.get(name) && name === client.name) {
+    peers.put(name, {
+      status: 'self'
     });
   }
+
+  // No need to connect if the peer is known.
+  if (peers.get(name)) {
+    return;
+  }
+
+  peers.put(name, {
+    status: 'connecting'
+  });
+
+  var runtime = client.runtime;
+  var vclient = runtime.newClient();
+  var context = runtime.getContext();
+
+  vclient.bindTo(context, name, function onremote(err, remote) {
+    if (err) {
+      // NOTE: It is possible the name is a stale entry in the mount table, if
+      // that is the case this error and the onremote callback will take a while
+      // to complete (upwards of 45 seconds).
+      //
+      // It might be better for each peer to track this on thier own...
+      if (err.id === 'v.io/v23/verror.NoServers') {
+        debug('stale mounttable entry: %s', name);
+        // TODO(jasoncampbell): Come up with a strategy to alert other peers
+        // about stale state of this peer...
+        peers.put(name, {
+          status: 'stale'
+        });
+
+        // Do some cleanup and remove the stale entry so other peers don't have
+        // to deal with this error case.
+        runtime.namespace().delete(context, name, true, noop);
+
+        // Remove the local stale refernce if the client is mounted. This
+        // prevents re-connect from being attempted when the glob stream is
+        // active.
+        if (client.mounted) {
+          peers.delete(name);
+        }
+
+        return;
+      } else {
+        client.emit('error', err);
+        return;
+      }
+    }
+
+    // TODO(jasoncampbell): This should happen in an interval so that changes in
+    // the remote's state can be detected early instead of assuming it will work
+    // at a later time...
+    remote.announce(context, client.name, function(err, response) {
+      if (err) {
+        debug('announce errored: %s', err.stack);
+        // TODO(jasoncampbell): Come up with a strategy to alert other peers
+        // about stale state of this peer...
+        client.emit('error', err);
+        return;
+      }
+
+      debug('announced to "%s" - %s', name, response);
+
+      peers.put(name, {
+        status: 'connected'
+      });
+    });
+  });
 };
 
-VanadiumWrapper.prototype.name = function() {
-  var wrapper = this;
-
-  assert.ok(wrapper.prefix,
-    'wrapper.name() can\'t be called before the Vanadium runtime is available');
-
+// TODO(jasoncampbell): Move naming related code into a sepatate module.
+function getName(runtime) {
   return [
-    wrapper.prefix,
-    wrapper.options.app,
-    wrapper.options.id
+    prefix(runtime),
+    'reader-example',
+    uuid.v4()
   ].join('/');
-};
-
-function onstatus(status) {
-  debug('status: %s', status);
-  this.status = status;
 }
 
 // Helper function to return a mountable prefix name from a runtime
