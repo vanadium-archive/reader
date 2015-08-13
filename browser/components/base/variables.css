@@ -1,0 +1,97 @@
+/* Copyright 2015 The Vanadium Authors. All rights reserved. */
+/* Use of this source code is governed by a BSD-style */
+/* license that can be found in the LICENSE file. */
+
+/* Variables */
+:root {
+
+  /* Colors */
+  --white:                  #FFFFFF;
+  --white-54:               rgba(255,255,255,.54);
+  --white-87:               rgba(255,255,255,.87);
+  --black:                  #000000;
+  --black-54:               rgba(0,0,0,.54);
+  --black-87:               rgba(0,0,0,.87);
+  --grey-50:                #FAFAFA;
+  --grey-100:               #F5F5F5;
+  --grey-300:               #E0E0E0;
+  --grey-700:               #616161;
+  --blue-grey-25:           #F5F7F8;
+  --blue-grey-50:           #ECEFF1;
+  --blue-grey-100:          #CFD8DC;
+  --blue-grey-200:          #B0BEC5;
+  --blue-grey-300:          #90A4AE;
+  --blue-grey-400:          #78909C;
+  --blue-grey-500:          #607D8B;
+  --blue-grey-700:          #455A64;
+  --blue-grey-800:          #37474F;
+  --blue-grey-900:          #263238;
+  --cyan-50:                #E0F7FA;
+  --cyan-600:               #00ACC1;
+  --cyan-700:               #0097A7;
+  --cyan-800:               #00838F;
+  --cyan-900:               #006064;
+  --deeporange-A200:        #FF6E40;
+
+  --sidebar-color:          var(--grey-50);
+  --codebox-color:          #FFFBF0;
+  --codeboxoutput-color:    #F9F8FB;
+
+  --link-primary:           var(--cyan-700);
+  --link-primary-active:    var(--cyan-800);
+  --link-secondary:         var(--black-87);
+  --link-secondary-active:  var(--black);
+
+  /* Syntax highlighting */
+
+  --text-yellow:            #F57F17;
+  --text-orange:            #D84315;
+  --text-red:               #D32F2F;
+  --text-magenta:           #D81B60;
+  --text-violet:            #7E57C2;
+  --text-blue:              #2196F3;
+  --text-cyan:              #26A69A;
+  --text-green:             #9E9D24;
+  --text-base03:            #263238;
+  --text-base02:            #37474F;
+  --text-base01:            #546E7A;
+  --text-base00:            #607D8B;
+  --text-base0:             #78909C;
+  --text-base1:             #90A4AE;
+  --text-base2:             #ECEFF1;
+  --text-base3:             #FFF8E1;
+
+  /* Fonts */
+  --primary-font: Roboto;
+  --font-weight-light: 300;
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+
+  /* Rhythm & motion (gutters & margins) */
+  --gutter-quarter: 7px;
+  --gutter-half: 14px;
+  --gutter: 28px;
+  --gutter-wide: 42px;
+  --gutter-double: 56px;
+
+  /* Shadows */
+  --drop-shadow:          rgba(0, 0, 0, 0.25) 0px 2px 2px 0px;
+  --drop-shadow-intense:  rgba(0, 0, 0, 0.25) 0px 8px 8px 0px;
+
+  /* Heights */
+  --header-height: calc(3 * var(--gutter));
+
+  /* Widths */
+  --sidebar-width-half: 8em;
+  --sidebar-width: 16em;
+  --content-max-width: 40em;
+  --content-min-width: 24em;
+  --wide-width: calc(var(--content-max-width) + var(--sidebar-width-half));
+  --max-width: calc(var(--content-max-width) + var(--sidebar-width));
+
+  /* Radii */
+  --box-radius: 6px;
+
+  /* Animation curves */
+  --anim-fastslow: cubic-bezier(0.4, 0.0, 0.2, 1);
+}

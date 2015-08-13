@@ -1,0 +1,30 @@
+/* Copyright 2015 The Vanadium Authors. All rights reserved. */
+/* Use of this source code is governed by a BSD-style */
+/* license that can be found in the LICENSE file. */
+
+@import "../base/variables.css";
+@import "../base/typography.css";
+
+header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  background-color: var(--cyan-800);
+  box-shadow: var(--drop-shadow-intense);
+}
+
+header a.menu,
+header a.more {
+  color: var(--white);
+  display: block;
+  text-decoration: none;
+  padding: var(--gutter);
+}
+
+header .title {
+  inherits: .type-smallhead;
+  flex: 1;
+  text-align: center;
+  /* TODO(jasoncampbell): use a real material design based high-contrast theme */
+  color: var(--white);
+}

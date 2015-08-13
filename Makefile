@@ -8,6 +8,7 @@ SHELL := /bin/bash
 .SUFFIXES:
 
 js_files := $(shell find browser -name "*.js")
+css_files := $(shell find browser -name "*.css")
 host ?= 127.0.0.1
 port ?= 8080
 
@@ -22,8 +23,8 @@ node_modules: package.json
 	@touch node_modules
 
 .DELETE_ON_ERROR:
-public/bundle.js: browser/index.js $(js_files) node_modules
-	@browserify --debug $< 1> $@
+public/bundle.js: browser/main.js $(js_files) $(css_files) node_modules
+	browserify --transform ./lib/transform-css --debug $< 1> $@
 
 .PHONY:
 clean:
@@ -33,7 +34,7 @@ clean:
 
 .PHONY:
 lint: node_modules
-	@dependency-check package.json --entry browser/index.js
+	@dependency-check package.json --entry browser/main.js
 	@jshint .
 
 .PHONY:

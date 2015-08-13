@@ -3,34 +3,90 @@
 // license that can be found in the LICENSE file.
 
 var hg = require('mercury');
+var debug = require('debug')('reader:pdf');
 
-module.exports = state;
+module.exports = create;
 
-function state(options) {
-  return hg.state({
+function create(options) {
+  debug('creating state: %o', options);
+
+  var state = hg.state({
+    error: hg.value(null),
     pdf: hg.value(null),
-    pageNum: hg.value(1),
+    pages: hg.varhash({
+      total: 1,
+      current: 1,
+    }),
+    progress: hg.value(0),
+    scale: hg.value(1.5),
+    file: hg.struct(options.file || {}),
     channels: {
-      set: set
+      previous: previous,
+      next: next
     }
   });
+
+  state.file(function update(file) {
+    debug('file update');
+    load(state, file.blob);
+  });
+
+  state.error(function(err) {
+    if (!err) {
+      return;
+    }
+
+    console.error('TODO: add an error component');
+    console.error(err.stack);
+  });
+
+  // Initialize the async PDFJS file loading.
+  load(state, options.file && options.file.blob);
+
+  return state;
 }
 
-function set(state, data) {
-  if (!data.file) {
+function next(state, data) {
+  // Only advance if it's not the last page.
+  var current = state.pages.get('current');
+  var total = state.pages.get('total');
+  if (current < total) {
+    state.pages.put('current', current + 1);
+  }
+}
+
+function previous(state, data) {
+  console.log('argeuments', arguments);
+  // Only advance if it's not the first page.
+  var current = state.pages.get('current');
+  if (current > 1) {
+    state.pages.put('current', current - 1);
+  }
+}
+
+function load(state, file) {
+  if (!file) {
     return;
   }
 
-  var file = data.file;
+  if (file.size === 0) {
+    var message = 'TODO: figure out why blobs from indexedDB' +
+        'will randomly have a size === 0';
+    var err = new Error(message);
+    state.error.set(err);
+    return;
+  }
+
+  debug('loading file into PDFJS: %o', file);
+
   var transport = new PDFJS.PDFDataRangeTransport();
-  var source = {
-    length: file.size
-  };
+  var source = {};
 
   // SEE: https://jsfiddle.net/6wxnd9uu/6/
   transport.count = 0;
   transport.file = file;
   transport.length = file.size;
+  source.length = file.size;
   transport.requestDataRange = requestDataRange;
 
   function requestDataRange(begin, end) {
@@ -50,18 +106,23 @@ function set(state, data) {
   .then(success, error);
 
   function password() {
-    throw new Error('Password required');
+    var err = new Error('Password required');
+    state.error.set(err);
   }
 
-  function progress() {
+  // TODO: Add a progress loader to the UI.
+  function progress(update) {
   }
 
   function success(pdf) {
+    debug('PDF loaded: %o', pdf);
     state.pdf.set(pdf);
-    state.pageNum.set(1);
+    state.pages.put('current', 1);
+    state.pages.put('total', pdf.numPages);
   }
 
   function error(err) {
-    throw err;
+    debug('error file loading into PDFJS: %o', err);
+    state.error.set(err);
   }
 }

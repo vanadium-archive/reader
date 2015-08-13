@@ -5,13 +5,12 @@
 module.exports = PDFWidget;
 
 // TODO(jasoncampebll): add verification for pdf object
-function PDFWidget(pdf, pageNum) {
+function PDFWidget(state) {
   if (!(this instanceof PDFWidget)) {
-    return new PDFWidget(pdf, pageNum);
+    return new PDFWidget(state);
   }
 
-  this.pdf = pdf;
-  this.pageNum = pageNum;
+  this.state = state;
 }
 
 PDFWidget.prototype.type = 'Widget';
@@ -26,16 +25,20 @@ PDFWidget.prototype.init = function init() {
 
 PDFWidget.prototype.update = function update(previous, element) {
   var widget = this;
-  var pdf = widget.pdf;
-  var pageNum = widget.pageNum;
+  var state = widget.state;
+  var pdf = state.pdf;
 
   if (!pdf) {
     return;
   }
 
-  pdf.getPage(pageNum).then(function(page) {
-    var scale = 1.5;
-    var viewport = page.getViewport(scale);
+  // TODO(jasoncampbell): It would be better to have this operation in a
+  // different place and only have this widget handle the render aspect of the
+  // page.
+  pdf.getPage(state.pages.current).then(success, error);
+
+  function success(page) {
+    var viewport = page.getViewport(state.scale);
     var context = element.getContext('2d');
 
     element.height = viewport.height;
@@ -45,5 +48,11 @@ PDFWidget.prototype.update = function update(previous, element) {
       canvasContext: context,
       viewport: viewport
     });
-  });
+  }
+
+  function error(err) {
+    process.nextTick(function() {
+      throw err;
+    });
+  }
 };
