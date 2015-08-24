@@ -14,7 +14,7 @@ module.exports = {
 function render(state, channels) {
   insert(css);
 
-  if (state.uuid) {
+  if (state.hash) {
     return h('.hidden');
   }
 

@@ -5,12 +5,11 @@
 var hg = require('mercury');
 var debug = require('debug')('reader:files');
 var file = require('./file');
-var uuid = require('uuid');
 var assert = require('assert');
 
 module.exports = function create(options) {
-  assert.ok(options, 'files.state(options) - options required');
-  assert.ok(options.store, 'files.state(options) - options.store required');
+  assert.ok(options, 'options required');
+  assert.ok(options.store, 'options.store required');
 
   var store = options.store;
   var state = hg.state({
@@ -19,7 +18,7 @@ module.exports = function create(options) {
     channels: {
       // Scope options.store to this state instance's channel.add.
       add: add.bind(null, store),
-      open: open
+      remove: remove.bind(null, store)
     }
   });
 
@@ -27,20 +26,34 @@ module.exports = function create(options) {
 };
 
 function add(store, state, data) {
-  assert.ok(data.file, 'A File object must be passed into channel');
+  if (!data.file) {
+    return;
+  }
 
-  var key = uuid.v4();
-  state.collection.put(key, data.file);
-
-  debug('file %o', data.file);
-
-  store.put(key, data.file, function onput(err) {
+  store.put(data.file, function onput(err, hash) {
     if (err) {
       state.error.set(err);
-      state.collection.delete(key);
       return;
     }
 
-    debug('put success!');
+    state.collection.put(hash, {
+      hash: hash,
+      blob: data.file
+    });
+
+    debug('added file: %s', hash);
+  });
+}
+
+function remove(store, state, data) {
+  assert.ok(data.hash, 'data.hash required');
+  debug('removing file: %s', data.hash);
+  store.del(data.hash, function ondel(err) {
+    if (err) {
+      state.error.set(err);
+      return;
+    }
+
+    state.collection.delete(data.hash);
   });
 }

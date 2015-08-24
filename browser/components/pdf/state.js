@@ -4,11 +4,12 @@
 
 var hg = require('mercury');
 var debug = require('debug')('reader:pdf');
+var window = require('global/window');
 
 module.exports = create;
 
 function create(options) {
-  debug('creating state: %o', options);
+  debug('creating PDF state: %o', options);
 
   var state = hg.state({
     error: hg.value(null),
@@ -74,14 +75,6 @@ function load(state, file) {
     return;
   }
 
-  if (file.size === 0) {
-    var message = 'TODO: figure out why blobs from indexedDB' +
-        'will randomly have a size === 0';
-    var err = new Error(message);
-    state.error.set(err);
-    return;
-  }
-
   debug('loading file into PDFJS: %o', file);
 
   var transport = new PDFJS.PDFDataRangeTransport();
@@ -96,7 +89,7 @@ function load(state, file) {
 
   function requestDataRange(begin, end) {
     var blob = this.file.slice(begin, end);
-    var fileReader = new FileReader();
+    var fileReader = new window.FileReader();
 
     fileReader.onload = function onload() {
       transport.count += end - begin;

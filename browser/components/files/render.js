@@ -14,7 +14,7 @@ module.exports = render;
 function render(state, channels) {
   insert(css);
 
-  var children = toArray(state.collection).map(file.render);
+  var children = toArray(state.collection).map(file.render, channels);
 
   if (children.length === 0) {
     children = [ hg.partial(blank) ];

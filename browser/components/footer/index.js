@@ -14,7 +14,7 @@ module.exports = {
 function render(state, add) {
   insert(css);
 
-  if (state.uuid) {
+  if (state.hash) {
     return h('div.hidden');
   }
 

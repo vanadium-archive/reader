@@ -3,6 +3,7 @@
 // license that can be found in the LICENSE file.
 
 var window = require('global/window');
+var document = require('global/document');
 window.debug = require('debug');
 var debug = require('debug')('reader:main');
 var domready = require('domready');
@@ -25,12 +26,11 @@ domready(function ondomready() {
 
   // Top level state.
   var state = hg.state({
-    uuid: hg.value(null),
+    hash: hg.value(null),
     pdf: pdf.state({}),
     files: files.state({
       store: store
     }),
-    // pageControls: pageControls.state(),
     constellation: constellation.state(),
     error: hg.value(null)
   });
@@ -57,7 +57,36 @@ domready(function ondomready() {
   // initialization. This allows components to be separately tested/interacted
   // with as mappings between data and UI without being tangled into the
   // local vanadium discovery process.
-  vanadium(state.constellation);
+  var client = vanadium(state.constellation);
+
+  // Anytime a PDF file is saved locally share it with any connected peers.
+  store.on('put', function onput(hash, file) {
+    client.sendPDF(hash, file, function(err) {
+      if (err) {
+        state.error.set(err);
+      }
+    });
+  });
+
+  // Anytime a PDF file is saved via Vanadium RPC update the pdf-store and
+  // state.
+  client.on('service:pdf', function onremotepdf(meta, blob) {
+    // Optimistically update the state.
+    state.files.collection.put(meta.hash, {
+      hash: meta.hash,
+      title: meta.name,
+      blob: blob,
+    });
+
+    // Use options.silent to prevent any put listeners from being fired and
+    // sending the file back to it's source peer.
+    store.put(blob, { silent: true }, function onput(err) {
+      if (err) {
+        state.error.set(err);
+        state.files.collection.delete(meta.hash);
+      }
+    });
+  });
 
   hg.app(document.body, state, render);
 });
@@ -73,11 +102,9 @@ function render(state) {
 }
 
 function content(state) {
-  debug('render content: %o', state);
-
   var partial;
 
-  if (state.uuid) {
+  if (state.hash) {
     partial = hg.partial(pdf.render, state.pdf, state.pdf.channels);
   } else {
     partial = hg.partial(files.render, state.files, state.files.channels);

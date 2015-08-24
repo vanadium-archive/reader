@@ -19,7 +19,8 @@ module.exports = function create(options) {
 
 function peer(object, key) {
   return hg.struct({
-    id: key,
+    uuid: key,
     status: object.status || 'unkown',
+    remote: object.remote
   });
 }

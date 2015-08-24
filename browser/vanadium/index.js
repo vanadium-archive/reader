@@ -2,20 +2,22 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+var assert = require('assert');
+var BlobReader = require('readable-blob-stream');
 var debug = require('debug')('reader:vanadium');
-var window = require('global/window');
-var uuid = require('uuid');
-var waterfall = require('run-waterfall');
-var vanadium = require('vanadium');
 var EventEmitter = require('events').EventEmitter;
-var service = require('./service');
-var glob = require('./glob-stream');
 var filter = require('./filter-stream');
+var glob = require('./glob-stream');
 var inherits = require('inherits');
-var through = require('through2');
 var ms = require('ms');
 var once = require('once');
-var assert = require('assert');
+var parallel = require('run-parallel');
+var service = require('./service');
+var through = require('through2');
+var uuid = require('uuid');
+var vanadium = require('vanadium');
+var waterfall = require('run-waterfall');
+var window = require('global/window');
 
 module.exports = connect;
 
@@ -56,6 +58,8 @@ function Client(options) {
 inherits(Client, EventEmitter);
 
 Client.prototype.discover = function(callback) {
+  debug('initializing discovery');
+
   var client = this;
   var workers = [
     client.init.bind(client),
@@ -82,6 +86,8 @@ Client.prototype.init = function(callback) {
     if (err) {
       return callback(err);
     }
+
+    debug('runtime is ready');
 
     // TODO(jasoncampbell): When this happens the window really, really needs to
     // be reloaded. In order to safely reload the page state should be stored or
@@ -112,6 +118,8 @@ Client.prototype.serve = function(runtime, callback) {
       return callback(err);
     }
 
+    debug('service is ready');
+
     window.addEventListener = window.addEventListener || noop;
     window.addEventListener('beforeunload', beforeunload);
 
@@ -132,6 +140,8 @@ Client.prototype.serve = function(runtime, callback) {
 };
 
 Client.prototype.glob = function(runtime, onmount) {
+  debug('globbing for self');
+
   onmount = once(onmount);
 
   var client = this;
@@ -177,6 +187,8 @@ Client.prototype.connect = function(name) {
 
   assert.ok(name, 'name is required');
 
+  debug('connecting to peer: %s', name);
+
   // No need to connect to the local service.
   if (!peers.get(name) && name === client.name) {
     peers.put(name, {
@@ -216,7 +228,7 @@ Client.prototype.connect = function(name) {
         // to deal with this error case.
         runtime.namespace().delete(context, name, true, noop);
 
-        // Remove the local stale refernce if the client is mounted. This
+        // Remove the local stale reference if the client is mounted. This
         // prevents re-connect from being attempted when the glob stream is
         // active.
         if (client.mounted) {
@@ -245,10 +257,72 @@ Client.prototype.connect = function(name) {
       debug('announced to "%s" - %s', name, response);
 
       peers.put(name, {
-        status: 'connected'
+        status: 'connected',
+        remote: remote
       });
     });
   });
+};
+
+Client.prototype.remotes = function(status, mapper) {
+  var client = this;
+  var peers = client.peers();
+  var keys = Object.keys(peers);
+  var length = keys.length;
+  var tasks = [];
+
+  for (var i = 0; i < length; i++) {
+    var peer = peers[keys[i]];
+
+    if (peer.status === status) {
+      var value = mapper ? mapper(peer) : peer;
+      tasks.push(value);
+    }
+  }
+
+  return tasks;
+};
+
+Client.prototype.sendPDF = function(key, file, callback) {
+  var client = this;
+  var runtime = client.runtime;
+  var context = runtime.getContext();
+  var tasks = client.remotes('connected', createWorker);
+  var meta = {
+    hash: key,
+    name: file.name,
+    size: file.size,
+    type: file.type
+  };
+
+  // Execute tasks across peers in parallel.
+  parallel(tasks, function done(err, results) {
+    if (err) {
+      callback(err);
+      return;
+    }
+
+    callback(null, results);
+  });
+
+  function createWorker(peer) {
+    debug('created worker for remote %s', peer.uuid);
+    return worker;
+
+    function worker(callback) {
+      callback = once(callback);
+      debug('sending PDF (%d bytes) to %s', file.size, peer.uuid);
+
+      var promise = peer.remote.savePDF(context, meta, callback);
+      var stream = promise.stream;
+      var bs = new BlobReader(file);
+
+      bs.on('error', callback);
+      stream.on('end', callback);
+
+      bs.pipe(stream);
+    }
+  }
 };
 
 // TODO(jasoncampbell): Move naming related code into a sepatate module.

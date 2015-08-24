@@ -5,46 +5,55 @@
 var debug = require('debug')('reader:routes');
 var store = require('./pdf-store');
 var file = require('./components/files/file');
+var eos = require('end-of-stream');
 
 module.exports = {
   '/#!/': index,
-  '/#!/:uuid': show
+  '/#!/:hash': show
 };
 
 function index(state, params, route) {
   debug('index');
-  state.uuid.set(null);
+  state.hash.set(null);
 
-  // TODO(jasoncampbell): The records stream from the source using an iterator
-  // stream and are concatenated to form the records array below. To remove the
-  // loop below use the stream directly and append to the collection instead of
-  // the current concat and loop.
-  store.all(function(err, records) {
+  var stream = store.createReadStream();
+
+  eos(stream, function done(err) {
     if (err) {
-      return state.error.set(err);
+      state.error.set(err);
     }
+  });
 
-    var length = records.length;
-    for (var i = 0; i < length; i++) {
-      var record = records[i];
-      state.files.collection.put(record.key, record.value);
-    }
+  stream.on('data', function onrecord(record) {
+    state.files.collection.put(record.key, {
+      hash: record.key,
+      blob: record.value
+    });
   });
 }
 
 function show(state, params, route) {
-  debug('route "show" uuid: %s', params.uuid);
-  state.uuid.set(params.uuid);
+  var hash = params.hash;
+
+  debug('route "show" file: %s', hash);
+  state.hash.set(hash);
 
   // TODO(jasoncampbell): Show loader.
-  store.get(params.uuid, function(err, blob) {
+  // TODO(jasoncampbell): Check if this hash is already in the files collection
+  // before looking in the local store.
+  store.get(params.hash, function(err, blob) {
     if (err) {
-      state.uuid.set(null);
+      state.hash.set(null);
       state.error.set(err);
       return;
     }
 
-    var update = file.state(blob, params.uuid);
+    // Create a new value for the PDF viewer
+    var update = file.state({
+      hash: hash,
+      blob: blob
+    });
+
     debug('updating pdf file: %o', update);
     state.pdf.file.set(update);
   });
