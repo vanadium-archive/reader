@@ -18,6 +18,7 @@ PDFWidget.prototype.type = 'Widget';
 PDFWidget.prototype.init = function init() {
   var widget = this;
   var element = document.createElement('canvas');
+  element.setAttribute('class','pdf-canvas');
 
   widget.update(null, element);
   return element;

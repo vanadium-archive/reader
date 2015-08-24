@@ -19,10 +19,12 @@ function create(options) {
     }),
     progress: hg.value(0),
     scale: hg.value(1.5),
+    linked: hg.value(false),
     file: hg.struct(options.file || {}),
     channels: {
       previous: previous,
-      next: next
+      next: next,
+      link: link
     }
   });
 
@@ -56,12 +58,15 @@ function next(state, data) {
 }
 
 function previous(state, data) {
-  console.log('argeuments', arguments);
   // Only advance if it's not the first page.
   var current = state.pages.get('current');
   if (current > 1) {
     state.pages.put('current', current - 1);
   }
+}
+
+function link(state, data) {
+  state.pages.put('linked', !state.pages.get('linked'));
 }
 
 function load(state, file) {

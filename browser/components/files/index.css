@@ -8,3 +8,11 @@
   margin: var(--gutter);
   padding: var(--gutter);
 }
+
+.file {
+  margin: 0px var(--gutter);
+  padding: var(--gutter);
+  background-color: var(--white);
+  border-bottom: 1px dashed var(--grey-100);
+  box-shadow: var(--drop-shadow);
+}

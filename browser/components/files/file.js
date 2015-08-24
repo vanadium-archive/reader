@@ -28,10 +28,12 @@ function state(blob, key) {
 }
 
 function render(file) {
-  return anchor({
-    href: format('/%s', file.uuid)
-  }, [
-    h('h2', file.title),
-    h('p', format('%s - %s', file.blob.type, file.uuid))
+  return h('.file', [
+    anchor({
+      href: format('/%s', file.uuid)
+    }, [
+      h('h2.type-title', file.title),
+      h('p.type-caption', format('%s - %s', file.blob.type, file.uuid))
+    ])
   ]);
 }

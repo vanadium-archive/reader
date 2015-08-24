@@ -1,0 +1,67 @@
+/* Copyright 2015 The Vanadium Authors. All rights reserved. */
+/* Use of this source code is governed by a BSD-style */
+/* license that can be found in the LICENSE file. */
+
+@import "../base/variables.css";
+@import "../base/typography.css";
+
+.controls {
+  right: 0;
+  text-align: center;
+  padding: var(--gutter-half);
+  display: flex;
+  align-items: center;
+  background-color: var(--cyan-800);
+  box-shadow: var(--drop-shadow);
+  position: relative;
+  z-index: 9999;
+}
+
+.center-controls {
+  display: inline-block;
+  margin: 0px auto 0px auto;
+}
+
+.left-controls {
+  display: inline-block;
+  float: left;
+}
+
+.right-controls {
+  display: inline-block;
+  float: right;
+}
+
+.clear-controls {
+  clear: both;
+}
+
+.pdf {
+  position: absolute;
+  z-index: 1;
+  top: var(--gutter);
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow: auto;
+}
+
+.pdf-canvas {
+  display: block;
+  margin: 0px auto 0px auto;
+  box-shadow: var(--drop-shadow);
+}
+
+span.pagecount {
+  padding-left: 1em;
+  padding-right: 1em;
+  color: var(--white);
+}
+
+button.link {
+  margin-left: 1em;
+}
+
+span.controls-open {
+  color: var(--white);
+}

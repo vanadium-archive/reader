@@ -22,3 +22,9 @@ body {
 .reader-app main {
   flex: 1;
 }
+
+a {
+  color: var(--cyan-700);
+  font-weight: 500;
+  text-decoration: none;
+}
