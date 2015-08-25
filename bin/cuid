@@ -1,0 +1,6 @@
+#!/usr/bin/env node
+
+var cuid = require('cuid');
+var value = cuid();
+
+console.log(value);

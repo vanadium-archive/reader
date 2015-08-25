@@ -1,6 +1,10 @@
 /.v23
-node_modules
-npm-debug.log
-public/bundle.*
-coverage
-disc.html
+/bin/principal
+/bin/syncbased
+/coverage
+/credentials
+/disc.html
+/node_modules
+/npm-debug.log
+/public/bundle.*
+/tmp

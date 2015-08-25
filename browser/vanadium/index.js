@@ -14,19 +14,20 @@ var once = require('once');
 var parallel = require('run-parallel');
 var service = require('./service');
 var through = require('through2');
-var uuid = require('uuid');
 var vanadium = require('vanadium');
 var waterfall = require('run-waterfall');
 var window = require('global/window');
+var syncbase = require('./syncbase');
+var prr = require('prr');
 
 module.exports = connect;
 
-function connect(state) {
-  var client = new Client({ state: state });
+function connect(options) {
+  var client = new Client(options);
 
-  client.discover(function (err, stream) {
+  client.discover(function onmount(err, stream) {
     if (err) {
-      return state.error.set(err);
+      return options.error.set(err);
     }
 
     debug('discovery is setup');
@@ -40,8 +41,13 @@ function Client(options) {
     return new Client(options);
   }
 
+  debug('instantiating: %o', options);
+
   var client = this;
 
+  EventEmitter.call(client);
+
+  client.id = options.id;
   client.name = '';
   client.mounted = false;
   client.runtime = {};
@@ -52,7 +58,19 @@ function Client(options) {
   // instance with the client's methods.
   client.on('service:announce', client.connect.bind(client));
 
-  EventEmitter.call(client);
+  client.once('runtime', function onruntime(runtime) {
+    var options = {
+      client: client,
+      runtime: runtime,
+      name: client.name.replace('app', 'syncbase'),
+      prefix: prefix(runtime).replace('/chrome', '') + '/reader'
+    };
+
+    syncbase(options, function syncbaseready(err, store) {
+      prr(client, 'syncbase', store);
+      client.emit('syncbase', store);
+    });
+  });
 }
 
 inherits(Client, EventEmitter);
@@ -80,7 +98,10 @@ Client.prototype.discover = function(callback) {
 Client.prototype.init = function(callback) {
   var client = this;
 
-  vanadium.init(onruntime);
+  vanadium.init({
+    appName: 'reader',
+    namespaceRoots: [ '/ns.dev.v.io:8101' ],
+  }, onruntime);
 
   function onruntime(err, runtime) {
     if (err) {
@@ -99,6 +120,17 @@ Client.prototype.init = function(callback) {
 
     client.runtime = runtime;
 
+    // <prefix>/reader/:id
+    // <prefix>/reader/:id/syncbase
+    // <prefix>/reader/syncgroup
+    var name = getName(runtime, client.id);
+
+    debug('name: %s', name);
+
+    client.name = name;
+
+    client.emit('runtime', runtime);
+
     return callback(null, runtime);
   }
 };
@@ -107,11 +139,8 @@ Client.prototype.serve = function(runtime, callback) {
   var client = this;
   var service = client.service;
   var server = runtime.newServer();
-  var name = getName(runtime);
 
-  client.name = name;
-
-  server.serve(name, service, onserve);
+  server.serve(client.name, service, onserve);
 
   function onserve(err) {
     if (err) {
@@ -134,20 +163,19 @@ Client.prototype.serve = function(runtime, callback) {
     // TODO(jasoncampbell): Inspect wether or not these methods actually have
     // time to finish executing, possibly run them in parallel with a callback
     // that fires an alert to test...
-    namespace.delete(context, name, true, noop);
+    namespace.delete(context, client.name, true, noop);
     server.stop(noop);
   }
 };
 
 Client.prototype.glob = function(runtime, onmount) {
-  debug('globbing for self');
-
   onmount = once(onmount);
 
   var client = this;
   var peers = client.peers;
-  // Glob pattern based on "<prefix>/reader-example/:uuid"
-  var pattern = prefix(runtime) + '/*/*';
+  // Glob pattern based on "<prefix>/reader/:id/app"
+  var pattern = prefix(runtime).replace('/chrome', '') + '/reader/*/app';
+
   var stream = glob({
     name: client.name,
     runtime: runtime,
@@ -182,15 +210,15 @@ Client.prototype.glob = function(runtime, onmount) {
 };
 
 Client.prototype.connect = function(name) {
-  var client = this;
-  var peers = client.peers;
-
   assert.ok(name, 'name is required');
 
-  debug('connecting to peer: %s', name);
+  var client = this;
+  var peers = client.peers;
+  var exists = peers.get(name);
+  var isSelf = name === client.name;
 
   // No need to connect to the local service.
-  if (!peers.get(name) && name === client.name) {
+  if (!exists && isSelf) {
     peers.put(name, {
       status: 'self'
     });
@@ -200,6 +228,8 @@ Client.prototype.connect = function(name) {
   if (peers.get(name)) {
     return;
   }
+
+  debug('connecting to peer: %s', name);
 
   peers.put(name, {
     status: 'connecting'
@@ -325,12 +355,14 @@ Client.prototype.sendPDF = function(key, file, callback) {
   }
 };
 
-// TODO(jasoncampbell): Move naming related code into a sepatate module.
-function getName(runtime) {
+// TODO(jasoncampbell): Move naming related code into a separate module.
+function getName(runtime, id) {
+  var p = prefix(runtime).replace('/chrome', '');
   return [
-    prefix(runtime),
-    'reader-example',
-    uuid.v4()
+    p,
+    'reader',
+    id,
+    'app'
   ].join('/');
 }
 

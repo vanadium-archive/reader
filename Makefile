@@ -9,8 +9,11 @@ SHELL := /bin/bash
 
 js_files := $(shell find browser -name "*.js")
 css_files := $(shell find browser -name "*.css")
+
 host ?= 127.0.0.1
 port ?= 8080
+syncbase_port ?= 4000
+id ?= $(shell if test -e tmp/id; then cat tmp/id; else bin/cuid; fi)
 
 all: public/bundle.js node_modules
 	@true  # silences watch
@@ -19,18 +22,34 @@ all: public/bundle.js node_modules
 node_modules: package.json
 	@npm prune
 	@npm install
-	@npm install $(V23_ROOT)/release/javascript/core/
-	@touch node_modules
+	# SEE: http://git.io/vGkKV
+	@rm -rf ./node_modules/{vanadium,syncbase}
+	@cd "$(V23_ROOT)/release/javascript/core" && npm link
+	@npm link vanadium
+	@cd "$(V23_ROOT)/release/javascript/syncbase" && make node_modules && npm link
+	@npm link syncbase
+	@touch $@
 
 .DELETE_ON_ERROR:
-public/bundle.js: browser/main.js $(js_files) $(css_files) node_modules
-	browserify --transform ./lib/transform-css --debug $< 1> $@
+public/bundle.js: browser/main.js $(js_files) $(css_files) node_modules tmp
+	browserify \
+		--debug \
+		--transform ./lib/transform-css \
+		--transform [ envify --ID $(id) ] \
+		$< 1> $@
+
+.PHONY:
+distclean:
+	@$(RM) -fr node_modules
+	@v23 goext distclean
 
 .PHONY:
 clean:
-	@$(RM) -fr node_modules
 	@$(RM) -fr npm-debug.log
 	@$(RM) -fr public/bundle.js
+	@$(RM) -fr tmp
+	@$(RM) -fr bin/syncbased
+	@$(RM) -fr bin/principal
 
 .PHONY:
 lint: node_modules
@@ -51,3 +70,34 @@ disk.html: browser/index.js $(js_files) node_modules
 .PHONY:
 start: all
 	st --port $(port) --host $(host) --dir public --no-cache --index index.html
+
+bin/principal:
+	v23 go build -a -o $@ v.io/x/ref/cmd/principal
+
+bin/syncbased:
+	v23 go build -a -o $@ v.io/syncbase/x/ref/services/syncbase/syncbased
+
+tmp:
+	mkdir -p $@
+	echo $(id) > $@/id
+
+credentials: bin/principal
+	./bin/principal seekblessings --v23.credentials ./credentials
+	touch $@
+
+# Naming collisions for different instances of syncbase for the same user?
+# Easy way to make --v23.permissions.literal?
+.PHONY:
+syncbase: bin/syncbased credentials tmp
+	$(eval blessing := $(shell principal dump --v23.credentials=./credentials -s=true))
+	$(eval email := $(subst dev.v.io/u/,,$(blessing)))
+	./bin/syncbased \
+		--v=5 \
+		--alsologtostderr=false \
+		--root-dir="tmp/syncbase_$(id)" \
+		--name="users/$(email)/reader/$(id)/syncbase" \
+		--v23.namespace.root="/ns.dev.v.io:8101" \
+		--v23.proxy="/ns.dev.v.io:8101/proxy" \
+		--v23.tcp.address=":$(syncbase_port)" \
+		--v23.credentials="credentials" \
+		--v23.permissions.literal='{"Admin":{"In":["$(blessing)"]},"Write":{"In":["$(blessing)"]},"Read":{"In":["$(blessing)"]},"Resolve":{"In":["$(blessing)"]},"Debug":{"In":["$(blessing)"]}}'

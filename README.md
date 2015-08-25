@@ -36,3 +36,11 @@ To run a local dev server use:
 If you would like to change the host and or port that is used:
 
     make start port=<port> host=<host>
+
+Run syncbase with:
+
+    make syncbase
+
+This will automatically have you set up credentials etc. If you want to remove stored data & credentials use:
+
+    make clean

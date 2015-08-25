@@ -8,7 +8,9 @@ module.exports = filter;
 
 // Creates a filter stream for name or prexisting names in peers
 function filter(peers) {
-  return through(function write(data, enc, callback) {
+  return through(write);
+
+  function write(data, enc, callback) {
     var name = data.toString();
 
     if (!! peers[name]) {
@@ -16,5 +18,5 @@ function filter(peers) {
     } else {
       return callback(null, data);
     }
-  });
+  }
 }
