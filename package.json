@@ -26,7 +26,8 @@
     "st": "^0.5.4",
     "synthetic-dom-events": "git://github.com/Raynos/synthetic-dom-events",
     "tape": "^4.0.0",
-    "through2": "^2.0.0"
+    "through2": "^2.0.0",
+    "envify": "~3.4.0"
   },
   "dependencies": {
     "browserify": "^11.0.1",

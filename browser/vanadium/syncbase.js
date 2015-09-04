@@ -135,8 +135,9 @@ Store.prototype.createTable = function(db, callback) {
   var runtime = store.runtime;
   var permissions = {};
   var context = timeout(runtime, ms('5s'));
+  var table = db.table(store.tableName);
 
-  db.createTable(context, store.tableName, permissions, ontable);
+  table.create(context, permissions, ontable);
 
   function ontable(err) {
     if (err && !(err instanceof verror.ExistError)) {

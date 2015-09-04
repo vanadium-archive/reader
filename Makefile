@@ -75,7 +75,7 @@ bin/principal:
 	v23 go build -a -o $@ v.io/x/ref/cmd/principal
 
 bin/syncbased:
-	v23 go build -a -o $@ v.io/syncbase/x/ref/services/syncbase/syncbased
+	v23 go build -a -o $@ v.io/x/ref/services/syncbase/syncbased
 
 tmp:
 	mkdir -p $@
@@ -89,7 +89,7 @@ credentials: bin/principal
 # Easy way to make --v23.permissions.literal?
 .PHONY:
 syncbase: bin/syncbased credentials tmp
-	$(eval blessing := $(shell principal dump --v23.credentials=./credentials -s=true))
+	$(eval blessing := $(shell bin/principal dump --v23.credentials=./credentials -s=true))
 	$(eval email := $(subst dev.v.io/u/,,$(blessing)))
 	./bin/syncbased \
 		--v=5 \
