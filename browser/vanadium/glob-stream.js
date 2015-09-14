@@ -54,7 +54,7 @@ function glob(options, stream, done) {
   assert.ok(options.pattern, 'options.pattern is required');
 
   var runtime = options.runtime;
-  var namespace = runtime.namespace();
+  var namespace = runtime.getNamespace();
   var context = runtime.getContext().withTimeout(options.timeout || ms('12s'));
   var promise = namespace.glob(context, options.pattern);
 

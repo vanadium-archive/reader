@@ -138,11 +138,10 @@ Client.prototype.init = function(callback) {
 Client.prototype.serve = function(runtime, callback) {
   var client = this;
   var service = client.service;
-  var server = runtime.newServer();
 
-  server.serve(client.name, service, onserve);
+  runtime.newServer(client.name, service, onserve);
 
-  function onserve(err) {
+  function onserve(err, server) {
     if (err) {
       return callback(err);
     }
@@ -153,18 +152,18 @@ Client.prototype.serve = function(runtime, callback) {
     window.addEventListener('beforeunload', beforeunload);
 
     callback(null, runtime);
-  }
 
-  function beforeunload() {
-    debug('closing Vanadium runtime');
-    var namespace = runtime.namespace();
-    var context = runtime.getContext();
+    function beforeunload() {
+      debug('closing Vanadium runtime');
+      var namespace = runtime.getNamespace();
+      var context = runtime.getContext();
 
-    // TODO(jasoncampbell): Inspect wether or not these methods actually have
-    // time to finish executing, possibly run them in parallel with a callback
-    // that fires an alert to test...
-    namespace.delete(context, client.name, true, noop);
-    server.stop(noop);
+      // TODO(jasoncampbell): Inspect wether or not these methods actually have
+      // time to finish executing, possibly run them in parallel with a callback
+      // that fires an alert to test...
+      namespace.delete(context, client.name, true, noop);
+      server.stop(noop);
+    }
   }
 };
 
@@ -236,7 +235,7 @@ Client.prototype.connect = function(name) {
   });
 
   var runtime = client.runtime;
-  var vclient = runtime.newClient();
+  var vclient = runtime.getClient();
   var context = runtime.getContext();
 
   vclient.bindTo(context, name, function onremote(err, remote) {
@@ -256,7 +255,7 @@ Client.prototype.connect = function(name) {
 
         // Do some cleanup and remove the stale entry so other peers don't have
         // to deal with this error case.
-        runtime.namespace().delete(context, name, true, noop);
+        runtime.getNamespace().delete(context, name, true, noop);
 
         // Remove the local stale reference if the client is mounted. This
         // prevents re-connect from being attempted when the glob stream is
