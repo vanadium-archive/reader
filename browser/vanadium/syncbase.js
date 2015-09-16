@@ -55,8 +55,8 @@ function Store(options) {
   prr(store, 'dbName', 'db');
   prr(store, 'tableName', 'device-sets');
 
-  // 'reader/$sync/reader/db/device-sets'
-  var syncname = options.prefix + '/' + 'reader/$sync/reader/db/device-sets';
+  // 'reader/@@sync/reader/db/device-sets'
+  var syncname = options.prefix + '/' + 'reader/@@sync/reader/db/device-sets';
   prr(store, 'syncname', syncname);
 
   // Keep track of the setup state, maybe make it lazy...
@@ -153,7 +153,7 @@ var MEMBER_INFO = new SyncGroupMemberInfo({
   syncPriority: 8
 });
 
-// Currently, SG names must be of the form <syncbaseName>/$sync/<suffix>.
+// Currently, SG names must be of the form <syncbaseName>/@@sync/<suffix>.
 // We use <app>/<db>/<table> for the suffix part.
 Store.prototype.createSyncGroup = function(db, callback) {
   debug('#createSyncGroup(%o)', arguments);
