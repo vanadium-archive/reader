@@ -6,8 +6,8 @@ An example PDF reader using Vanadium.
 
 ## Dependencies
 
-If you have a `$V23_ROOT` setup you can install Node.js from
-`$V23_ROOT/third_party` by running:
+If you have a `$JIRI_ROOT` setup you can install Node.js from
+`$JIRI_ROOT/third_party` by running:
 
     v23 profile install nodejs
 
