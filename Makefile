@@ -1,6 +1,6 @@
 MAKEFLAGS += --warn-undefined-variables
 PATH := node_modules/.bin:$(PATH)
-PATH := $(PATH):$(V23_ROOT)/third_party/cout/node/bin
+PATH := $(PATH):$(JIRI_ROOT)/third_party/cout/node/bin
 SHELL := /bin/bash
 
 .SHELLFLAGS := -eu -o pipefail -c
@@ -24,9 +24,9 @@ node_modules: package.json
 	@npm install
 	# SEE: http://git.io/vGkKV
 	@rm -rf ./node_modules/{vanadium,syncbase}
-	@cd "$(V23_ROOT)/release/javascript/core" && npm link
+	@cd "$(JIRI_ROOT)/release/javascript/core" && npm link
 	@npm link vanadium
-	@cd "$(V23_ROOT)/release/javascript/syncbase" && make node_modules && npm link
+	@cd "$(JIRI_ROOT)/release/javascript/syncbase" && make node_modules && npm link
 	@npm link syncbase
 	@touch $@
 
