@@ -4,56 +4,60 @@
 
 var hg = require('mercury');
 var debug = require('debug')('reader:files');
-var file = require('./file');
 var assert = require('assert');
+var cuid = require('cuid');
 
 module.exports = function create(options) {
-  assert.ok(options, 'options required');
-  assert.ok(options.store, 'options.store required');
+  options = options || {};
 
-  var store = options.store;
   var state = hg.state({
     error: hg.value(null),
-    collection: hg.varhash({}, file.state),
+    store: hg.value(null),
+    collection: hg.varhash({}, createFile),
     channels: {
-      // Scope options.store to this state instance's channel.add.
-      add: add.bind(null, store),
-      remove: remove.bind(null, store)
+      add: add,
+      remove: remove
     }
   });
 
   return state;
 };
 
-function add(store, state, data) {
+function add(state, data) {
   if (!data.file) {
     return;
   }
 
-  store.put(data.file, function onput(err, hash) {
-    if (err) {
-      state.error.set(err);
-      return;
-    }
+  debug('adding file: %o', data.file);
+  // TODO(jasoncampbell): Add validation for blob.type === "application/pdf"
+  var key = cuid();
 
-    state.collection.put(hash, {
-      hash: hash,
-      blob: data.file
-    });
-
-    debug('added file: %s', hash);
+  state.collection.put(key, {
+    blob: data.file
   });
 }
 
-function remove(store, state, data) {
-  assert.ok(data.hash, 'data.hash required');
-  debug('removing file: %s', data.hash);
-  store.del(data.hash, function ondel(err) {
-    if (err) {
-      state.error.set(err);
-      return;
-    }
+function remove(state, data) {
+  assert.ok(data.id, 'data.id required');
+  state.collection.delete(data.id);
+}
 
-    state.collection.delete(data.hash);
+function createFile(options, key) {
+  key = key || cuid();
+
+  // If the blob was created in this application instance it will be a File
+  // object and have a name attribute. If it was created by a peer it will
+  // manifest locally as a Blob object (Files can't be directly constructed).
+  //
+  // SEE: https://developer.mozilla.org/en-US/docs/Web/API/File
+  var blob = options.blob;
+
+  return hg.struct({
+    id: hg.value(key),
+    ref: hg.value(options.ref || ''),
+    title: hg.value(options.title || blob.name || ''),
+    size: hg.value(options.size || blob.size),
+    type: hg.value(options.type || blob.type),
+    blob: hg.value(blob || null)
   });
 }

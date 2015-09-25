@@ -13,7 +13,7 @@ footer .add-file {
   position: absolute;
   right: var(--gutter);
   bottom: var(--gutter);
-  background-color: var(--deeporange-A200);
+  background-color: grey;
   width: calc(var(--gutter) * 2);
   height: calc(var(--gutter) * 2);
   border-radius: 50%;
@@ -22,10 +22,14 @@ footer .add-file {
   cursor: pointer;
 }
 
+footer .add-file.active {
+  background-color: var(--deeporange-A200);
+}
+
 footer .add-file:hover {
-  background-color: grey;
+  background-color: var(--cyan-900);
 }
 
 footer .add-file:active {
-  background-color: black;
+  background-color: var(--cyan-800);
 }

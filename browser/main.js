@@ -2,40 +2,42 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-var window = require('global/window');
-var document = require('global/document');
-window.debug = require('debug');
+var constellation = require('./components/constellation');
+var css = require('./components/base/index.css');
 var debug = require('debug')('reader:main');
+var document = require('global/document');
 var domready = require('domready');
-var hg = require('mercury');
+var each = require('./util').each;
+var eos = require('end-of-stream');
+var files = require('./components/files');
+var footer = require('./components/footer');
 var h = require('mercury').h;
+var header = require('./components/header');
+var hg = require('mercury');
+var insert = require('insert-css');
+var pdf = require('./components/pdf');
+var removed = require('./util').removed;
 var router = require('./router');
 var routes = require('./routes');
-var insert = require('insert-css');
-var css = require('./components/base/index.css');
-var header = require('./components/header');
-var footer = require('./components/footer');
-var files = require('./components/files');
-var pdf = require('./components/pdf');
-var constellation = require('./components/constellation');
 var vanadium = require('./vanadium');
-var store = require('./pdf-store');
-var hash = require('./hash-object');
+var window = require('global/window');
+
+window.debug = require('debug');
 
 domready(function ondomready() {
   debug('domready');
 
   // Top level state.
   var state = hg.state({
-    hash: hg.value(null),
+    store: hg.value(null),
+    files: files.state(),
     pdf: pdf.state({}),
-    files: files.state({
-      store: store
-    }),
     constellation: constellation.state(),
     error: hg.value(null)
   });
 
+  // TODO(jasoncampbell): add an error component for aggregating, logging, and
+  // displaying errors in the UI.
   state.error(function(err) {
     if (!err) {
       return;
@@ -47,12 +49,6 @@ domready(function ondomready() {
 
   router(state, routes).on('notfound', notfound);
 
-  // TODO(jasoncampbell): add an error component for aggregating, logging, and
-  // displaying errors in the UI.
-  state.constellation.error(function(err) {
-    state.error.set(err);
-  });
-
   // The vanadium client is coupled to the application state here so that async
   // code paths in the ./vanadium modules can be isolated to the application
   // initialization. This allows components to be separately tested/interacted
@@ -63,80 +59,71 @@ domready(function ondomready() {
     state: state.constellation
   });
 
-  // Anytime a PDF file is saved locally share it with any connected peers.
-  store.on('put', function onput(hash, file) {
-    client.sendPDF(hash, file, function(err) {
-      if (err) {
-        state.error.set(err);
-      }
-    });
-  });
-
-  // Anytime a PDF file is saved via Vanadium RPC update the pdf-store and
-  // state.
-  client.on('service:pdf', function onremotepdf(meta, blob) {
-    // Optimistically update the state.
-    state.files.collection.put(meta.hash, {
-      hash: meta.hash,
-      title: meta.name,
-      blob: blob,
-    });
-
-    // Use options.silent to prevent any put listeners from being fired and
-    // sending the file back to it's source peer.
-    store.put(blob, { silent: true }, function onput(err) {
-      if (err) {
-        state.error.set(err);
-        state.files.collection.delete(meta.hash);
-      }
-    });
-  });
-
-  // NOTE: "db" here is:
-  // user/<email>/reader/<client-id>/syncbase/reader/db/device-sets
   client.on('syncbase', function onsyncbase(store) {
-    debug('synbase is ready! %o', store);
-    // NOTE: The code here is meant to be illustrative and is very hacky, some
-    // refactoring needs to occur to get the right data structures in the right
-    // place to support proper state serialization and device-sets. The example
-    // here is using the PDF atom and storing that syncbase keyd off a hash of
-    // the file. There is pending work to get this fully integrated into
-    // syncbase. SEE: <issue>
+    state.store.set(store);
 
-    var updates = {};
+    // Setup watch.
+    var ws = store.createWatchStream('files');
 
-    store.on('put', function onput(key, value) {
-      // Temporary gaurd against circular updates
-      if (!updates[key] || (updates[key] && updates[key] !== hash(value))) {
-        debug('put detected: %s - %o', key, value);
-
-        state.pdf.pages.set(value.pages);
+    eos(ws, function(err) {
+      if (err) {
+        state.error.set(err);
       }
     });
 
-    state.pdf(function onstatechange(data) {
-      debug('pdf stage changed: %o', data);
+    ws.on('data', function(change) {
+      debug('watch stream change: %o', change);
+    });
 
-      // TODO: gate changes through a RAF loop so that updates only happen in
-      // regular intervals and only the most recent updates get applied if
-      // partial updates occured during iterations in the loop. See the mercury
-      // todo example for reference: http://git.io/vGzk4
-      var key = data.file.hash;
-      var value = {
-        hash: key,
-        pages: data.pages
-      };
+    // Scan all keys and populate state.
+    var stream = store.createReadStream('files');
 
-      updates[key] = hash(value);
+    stream.on('data', function(data) {
+      state.files.collection.put(data.key, data.value);
+    });
 
-      store.put(key, value, function done(err) {
+    eos(stream, function(err) {
+      if (err) {
+        state.error.set(err);
+      }
+
+      // Add the watcher here, after the collection has been populated to
+      // prevent firing the listener and re-puting all the files again.
+      state.files.collection(fileschange);
+    });
+  });
+
+  function fileschange(collection) {
+    debug('state.files.collection => change: %o', collection);
+    var store = state.store();
+
+    // TODO(jasoncampbell): make sure to try and sync this at some point or
+    // block all UI until the runtime is ready.
+    // SEE: http://git.io/vn5YV
+    if (!store) {
+      return;
+    }
+
+    removed(collection, function(key) {
+      store.del('files', key, function(err) {
         if (err) {
           state.error.set(err);
-          return;
         }
       });
     });
-  });
+
+    each(collection, function(key, value) {
+      debug('each iterator: %o', value);
+
+      store.put('files', value, function callback(err, file) {
+        if (err) {
+          state.error.set(err);
+        }
+
+        state.files.collection[file.id].ref.set(file.ref);
+      });
+    });
+  }
 
   hg.app(document.body, state, render);
 });

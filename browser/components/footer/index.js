@@ -19,7 +19,11 @@ function render(state, add) {
   }
 
   return h('footer', [
-    h('label.add-file', [
+    h('label.add-file',
+    {
+      className: state.store ? 'active' : ''
+    },
+    [
       h('input.hidden', {
         type: 'file',
         'ev-event': file(add)

@@ -60,16 +60,13 @@ function Client(options) {
 
   client.once('runtime', function onruntime(runtime) {
     var options = {
-      client: client,
       runtime: runtime,
-      name: client.name.replace('app', 'syncbase'),
-      prefix: prefix(runtime).replace('/chrome', '') + '/reader'
+      name: client.name.replace(/\/app$/, '/syncbase')
     };
 
-    syncbase(options, function syncbaseready(err, store) {
-      prr(client, 'syncbase', store);
-      client.emit('syncbase', store);
-    });
+    var store = syncbase(options);
+    prr(client, 'syncbase', store);
+    client.emit('syncbase', store);
   });
 }
 
@@ -96,6 +93,7 @@ Client.prototype.discover = function(callback) {
 };
 
 Client.prototype.init = function(callback) {
+  debug('calling init');
   var client = this;
 
   vanadium.init({
