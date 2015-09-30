@@ -4,17 +4,23 @@
 
 var assert = require('assert');
 var BlobReader = require('readable-blob-stream');
+var db = require('./db');
 var debug = require('debug')('reader:syncbase');
+var dz = require('dezalgo');
 var eos = require('end-of-stream');
+var error = require('../error');
 var EventEmitter = require('events').EventEmitter;
 var extend = require('xtend');
+var format = require('util').format;
+var get = require('./get');
 var inherits = require('inherits');
-var json = require('./json');
 var ms = require('ms');
 var once = require('once');
+var parse = require('./parse');
 var prr = require('prr');
-var setup = require('./setup-db');
+var put = require('./put');
 var syncbase = require('syncbase');
+var table = require('./table');
 var through = require('through2');
 var util = require('../util');
 var vanadium = require('vanadium');
@@ -23,8 +29,14 @@ var window = require('global/window');
 
 module.exports = Store;
 
-// Naming for the DB setup looks like <app-name>/<db-name>/<table-name> and
-// <db-name> is hard coded to "db".
+// Naming for the Syncbase setup looks like <app-name>/<db>/<table>, these
+// values are hard-coded in ./db.js and result in serices being mounted with the
+// following structure:
+//
+//    <name>/reader/db/<table>
+//
+// The app, database, table setup is lazily evaluated and will create missing
+// components in the corresponding syncbase if they are missing.
 function Store(options) {
   if (!(this instanceof Store)) {
     return new Store(options);
@@ -39,76 +51,97 @@ function Store(options) {
 
   prr(store, 'runtime', options.runtime);
   prr(store, 'name', options.name, 'e');
-  prr(store, 'tables', {}, 'e');
+  prr(store, '_tables', {});
+  prr(store, '_db', {}, 'c');
+
+  store._status = 'new';
+  store.on('status', onstatus);
+
+  function onstatus(status) {
+    debug('status: %s', status);
+    store._status = status;
+  }
 }
 
 inherits(Store, EventEmitter);
 
-Store.prototype.db = function(callback) {
+Store.prototype.status = function(status) {
   var store = this;
-  var runtime = store.runtime;
-  var name = store.name;
-
-  if (store._db) {
-    return process.nextTick(function next() {
-      callback(null, store._db);
-    });
-  }
-
-  setup(runtime, name, function onsetup(err, db) {
-    if (err) {
-      callback(err);
-      return;
-    }
-
-    // NOTE: It's possible for this async call to happen in paralell and a
-    // previos callback to have fired already. If that is the case do not re-set
-    // `store._db`.
-    // TODO: Wrap calls with some logic where pending callbacks can
-    // be triggered without making multiple `setup` calls.
-    if (! store._db) {
-      prr(store, '_db', db);
-    }
-
-    callback(null, db);
-  });
+  return store._status === status;
 };
 
-Store.prototype.table = function(name, callback) {
+Store.prototype.db = function(callback) {
+  callback = dz(callback);
+
   var store = this;
 
-  if (!!store.tables[name]) {
-    return process.nextTick(function next() {
-      callback(null, store.tables[name]);
-    });
+  if (store.status('ready')) {
+    callback(null, store._db);
+    return;
   }
 
-  store.db(function ondb(err, db) {
+  // In case a previous call is in process it's callback will handle the error
+  // case, but current calls will need to be queued. If the in-process call is
+  // successful queued callbacks can be called via the "db" event.
+  if (store.status('initializing')) {
+    store.once('db', callback.bind(null, null));
+    return;
+  }
+
+  store.emit('status', 'initializing');
+
+  var context = store.runtime.getContext();
+  var name = store.name;
+  db(context, name, ondb);
+
+  function ondb(err, db) {
     if (err) {
       callback(err);
       return;
     }
 
-    var table = db.table(name);
-    var runtime = store.runtime;
-    var context = util.timeout(runtime, ms('5s'));
-    var permissions = {};
+    prr(store, '_db', db);
+    store.emit('db', db);
+    store.emit('status', 'ready');
+    callback(null, db);
+  }
+};
 
-    table.create(context, permissions, function ontable(err) {
-      if (err && !(err instanceof verror.ExistError)) {
-        callback(err);
-        return;
-      }
+Store.prototype.table = function(keyspace, callback) {
+  callback = dz(callback);
 
-      store.tables[name] = table;
+  var store = this;
+  var cached = store._tables[keyspace];
 
-      callback(null, table);
-    });
-  });
+  if (cached) {
+    callback(null, cached);
+    return;
+  }
+
+  store.db(ondb);
+
+  function ondb(err, db) {
+    if (err) {
+      callback(err);
+      return;
+    }
+
+    var context = store.runtime.getContext();
+    table(context, db, keyspace, ontable);
+  }
+
+  function ontable(err, table) {
+    if (err) {
+      callback(err);
+      return;
+    }
+
+    store._tables[keyspace] = table;
+    callback(null, table);
+  }
 };
 
 Store.prototype.get = function(keyspace, key, callback) {
-  debug('#get("%s", "%s", callback)', keyspace, key);
   var store = this;
 
   store.table(keyspace, ontable);
@@ -119,27 +152,27 @@ Store.prototype.get = function(keyspace, key, callback) {
       return;
     }
 
-    var runtime = store.runtime;
-    var context = util.timeout(runtime, ms('5s'));
-
-    table.get(context, key, onget);
+    var context = store.runtime.getContext();
+    get(context, table, key, onget);
   }
 
-  function onget(err, string) {
+  function onget(err, data) {
     if (err) {
-      callback(err);
+      var template = 'syncbase #get("%s", "%s", callback) failed';
+      var message = format(template, keyspace, key);
+      error(err, message, callback);
       return;
     }
 
-    json.decode(string, callback);
+    callback(null, data);
   }
 };
 
-Store.prototype.put = function(keyspace, value, callback) {
-  debug('#put("%s", %o, callback)', keyspace, value);
-  var store = this;
+Store.prototype.put = function(keyspace, data, callback) {
+  assert.ok(data.id, 'data.id is required.');
 
-  assert.ok(value.id, 'item.id is required.');
+  var store = this;
+  var context = store.runtime.getContext();
 
   store.table(keyspace, ontable);
 
@@ -148,58 +181,39 @@ Store.prototype.put = function(keyspace, value, callback) {
       return callback(err);
     }
 
-    if (keyspace === 'files' && !value.ref) {
-      assert.ok(value.blob, 'item.blob is required.');
-      store.putBlob(value.blob, onref);
+    if (keyspace === 'files' && !data.ref) {
+      store.putBlob(data.blob, onref);
     } else {
-      put(table, value, callback);
+      put(context, table, data, callback);
     }
+
+    return;
 
     function onref(err, ref) {
       if (err) {
         return callback(err);
       }
 
-      value.ref = ref;
-      put(table, value, callback);
-    }
-
-    function put(table, value) {
-      var key = value.id;
-      var runtime = store.runtime;
-      var context = util.timeout(runtime, ms('5s'));
-
-      json.encode(value, function onjson(err, string){
-        table.put(context, key, string, onput);
-      });
-
-      function onput(err) {
-        if (err) {
-          return callback(err);
-        }
-
-        callback(null, value);
-      }
+      data.ref = ref;
+      put(context, table, data, callback);
     }
   }
 };
 
 Store.prototype.del = function(keyspace, key, callback) {
-  debug('#del("%s", "%s", callback)', keyspace, key);
   var store = this;
 
   store.table(keyspace, ontable);
 
   function ontable(err, table) {
-    var runtime = store.runtime;
-    var context = util.timeout(runtime, ms('5s'));
+    var context = store.runtime.getContext();
+    var ctx = context.withTimeout(ms('5s'));
 
-    table.delete(context, key, callback);
+    table.delete(ctx, key, callback);
   }
 };
 
 Store.prototype.putBlob = function(blob, callback) {
-  debug('#putBlob(%o, callback)', blob);
   assert.ok(blob instanceof window.Blob, 'Must use a Blob object.');
 
   var store = this;
@@ -211,10 +225,9 @@ Store.prototype.putBlob = function(blob, callback) {
       return callback(err);
     }
 
-    var runtime = store.runtime;
-    var context = util.timeout(runtime, ms('5s'));
-
-    db.createBlob(context, onblob);
+    var context = store.runtime.getContext();
+    var ctx = context.withTimeout(ms('5s'));
+    db.createBlob(ctx, onblob);
   }
 
   function onblob(err, vblob) {
@@ -224,10 +237,10 @@ Store.prototype.putBlob = function(blob, callback) {
     }
 
     var reader = new BlobReader(blob);
-    var runtime = store.runtime;
-    var context = util.timeout(runtime, ms('5s'));
+    var context = store.runtime.getContext();
+    var ctx = context.withTimeout(ms('5s'));
     var done = once(onput);
-    var writer = vblob.put(context, done);
+    var writer = vblob.put(ctx, done);
 
     eos(reader, done);
     eos(writer, { readable: false }, done);
@@ -240,10 +253,9 @@ Store.prototype.putBlob = function(blob, callback) {
         return;
       }
 
-      var runtime = store.runtime;
-      var context = util.timeout(runtime, ms('5s'));
-
-      vblob.commit(context, function oncommit(err) {
+      var context = store.runtime.getContext();
+      var ctx = context.withTimeout(ms('5s'));
+      vblob.commit(ctx, function oncommit(err) {
         if (err) {
           callback(err);
           return;
@@ -274,11 +286,11 @@ Store.prototype.createReadStream = function(keyspace, options) {
       return;
     }
 
-    var runtime = store.runtime;
-    var context = util.timeout(runtime, ms('5s'));
     var range = syncbase.nosql.rowrange.range(options.start, options.limit);
     var done = once(end);
-    var reader = table.scan(context, range, done);
+    var context = store.runtime.getContext();
+    var ctx = context.withTimeout(ms('5s'));
+    var reader = table.scan(ctx, range, done);
 
     eos(reader, done);
     reader.pipe(stream);
@@ -290,15 +302,17 @@ Store.prototype.createReadStream = function(keyspace, options) {
       key: chunk.key
     };
 
-    json.decode(chunk.value, function onvalue(err, value) {
+    parse(chunk.value, onparse);
+
+    function onparse(err, data) {
       if (err) {
         callback(err);
         return;
       }
 
-      item.value = value;
+      item.value = data;
       callback(null, item);
-    });
+    }
   }
 
   function end(err) {
@@ -323,10 +337,9 @@ Store.prototype.createWatchStream = function(keyspace) {
       return;
     }
 
-    var runtime = store.runtime;
-    var context = util.timeout(runtime, ms('5s'));
-
-    db.getResumeMarker(context, onmarker);
+    var context = store.runtime.getContext();
+    var ctx = context.withTimeout(ms('5s'));
+    db.getResumeMarker(ctx, onmarker);
 
     function onmarker(err, marker) {
       if (err) {
@@ -334,11 +347,11 @@ Store.prototype.createWatchStream = function(keyspace) {
         return;
       }
 
-      var runtime = store.runtime;
-      var context = util.cancel(runtime);
       var prefix = '';
       var done = once(end);
-      var reader = db.watch(context, keyspace, prefix, marker, done);
+      var context = store.runtime.getContext();
+      var ctx = context.withCancel();
+      var reader = db.watch(ctx, keyspace, prefix, marker, done);
 
       eos(reader, reader);
       reader.pipe(stream);
@@ -351,6 +364,8 @@ Store.prototype.createWatchStream = function(keyspace) {
       callback(null);
       return;
     }
+
+    debug('change: %o', chunk);
 
     var change = {
       type: chunk.changeType,
@@ -373,8 +388,9 @@ Store.prototype.createWatchStream = function(keyspace) {
         return;
       }
 
+      debug('get success: %o', value);
       change.value = value;
-      callback(null, value);
+      callback(null, change);
     }
   }
 
@@ -382,6 +398,106 @@ Store.prototype.createWatchStream = function(keyspace) {
     if (err) {
       stream.emit('error', err);
       return;
+    }
+  }
+};
+
+Store.prototype.sync = function(callback) {
+  var _db;
+
+  var store = this;
+  var username = util.parseName(store.name).username;
+  var context = store.runtime.getContext();
+  // The Vanadium name of the running syncbase instance that hosts the sync
+  // group.
+  var name = 'users/' + username + '/reader/cloudsync';
+  var syncname = [
+    name,
+    '%%sync', // Syncbase naming scheme.
+    'cloudsync' // Suffix.
+  ].join('/');
+  // TODO(jasoncampbell): Find docs or something about what this is and what it
+  // does.
+  var info = new syncbase.nosql.SyncGroupMemberInfo({
+    syncPriority: 8
+  });
+
+  db(context, name, ondb);
+
+  function ondb(err, db) {
+    if (err) {
+      callback(err);
+      return;
+    }
+
+    _db = db;
+    table(context, db, 'files', ontable);
+  }
+
+  function ontable(err, table) {
+    if (err) {
+      callback(err);
+      return;
+    }
+
+    var permissions = new window.Map([
+          [ 'Admin',   { 'in': [ '...' ] } ],
+          [ 'Read',    { 'in': [ '...' ] } ],
+          [ 'Write',   { 'in': [ '...' ] } ],
+          [ 'Resolve', { 'in': [ '...' ] } ],
+          [ 'Debug',   { 'in': [ '...' ] } ]
+        ]);
+
+    var spec = new syncbase.nosql.SyncGroupSpec({
+      description: 'reader syncgroup ',
+      perms: permissions,
+      // Prefixes are structured by <table/keyspace>:<key-pattern> where
+      // <key-pattern> matches keys (rows in syncbase vernacular). The rows/keys
+      // are mounted as <name>/reader/db/<table>/<key/row> so the prefixes can
+      // be thought of as a vanadium namespace glob on the last two names with a
+      // different separator.
+      prefixes: [ 'files:c' ],
+      // mountTables: [ ... ] - actually a rendezvous point that is
+      // permissable to mount to by the syncbase instance hosting the sync
+      // group.
+      //
+      // Note this name NEEDS to be rooted.
+      mountTables: [
+        '/ns.dev.v.io:8101/users/' + username + '/reader/rendezvous'
+      ]
+    });
+
+    var ctx = context.withTimeout(ms('5s'));
+    var group = _db.syncGroup(syncname);
+    group.create(ctx, spec, info, oncreate);
+  }
+
+  function oncreate(err) {
+    if (err && !(err instanceof verror.ExistError)) {
+      return callback(err);
+    }
+
+    debug('remote syncbase configured!');
+
+    // Now setup local syncbase to join the remote syncgroup.
+    store.db(function(err, db) {
+      if (err) {
+        return callback(err);
+      }
+
+      var ctx = context.withTimeout(ms('5s'));
+      var group = db.syncGroup(syncname);
+
+      debug('joining syncgroup: %s', syncname);
+      group.join(ctx, info, onjoin);
+    });
+
+    function onjoin(err) {
+      if (err && !(err instanceof verror.ExistError)) {
+        return callback(err);
+      }
+
+      callback(null);
     }
   }
 };

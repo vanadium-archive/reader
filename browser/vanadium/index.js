@@ -3,31 +3,29 @@
 // license that can be found in the LICENSE file.
 
 var assert = require('assert');
-var BlobReader = require('readable-blob-stream');
 var debug = require('debug')('reader:vanadium');
+var eos = require('end-of-stream');
 var EventEmitter = require('events').EventEmitter;
-var filter = require('./filter-stream');
 var glob = require('./glob-stream');
 var inherits = require('inherits');
 var ms = require('ms');
 var once = require('once');
-var parallel = require('run-parallel');
+var prr = require('prr');
 var service = require('./service');
-var through = require('through2');
+var syncbase = require('./syncbase');
 var vanadium = require('vanadium');
 var waterfall = require('run-waterfall');
 var window = require('global/window');
-var syncbase = require('./syncbase');
-var prr = require('prr');
 
 module.exports = connect;
 
 function connect(options) {
   var client = new Client(options);
 
-  client.discover(function onmount(err, stream) {
+  client.mount(function onmount(err) {
     if (err) {
-      return options.error.set(err);
+      client.emit('error', err);
+      return;
     }
 
     debug('discovery is setup');
@@ -51,7 +49,6 @@ function Client(options) {
   client.name = '';
   client.mounted = false;
   client.runtime = {};
-  client.peers = options.state.peers;
   client.service = service(client);
 
   // TODO(jasoncampbell): Come up with a better way to couple the bare service
@@ -67,14 +64,13 @@ function Client(options) {
     var store = syncbase(options);
     prr(client, 'syncbase', store);
     client.emit('syncbase', store);
+    debug('runtime is available');
   });
 }
 
 inherits(Client, EventEmitter);
 
-Client.prototype.discover = function(callback) {
-  debug('initializing discovery');
-
+Client.prototype.mount = function(callback) {
   var client = this;
   var workers = [
     client.init.bind(client),
@@ -93,7 +89,6 @@ Client.prototype.discover = function(callback) {
 };
 
 Client.prototype.init = function(callback) {
-  debug('calling init');
   var client = this;
 
   vanadium.init({
@@ -105,8 +100,6 @@ Client.prototype.init = function(callback) {
     if (err) {
       return callback(err);
     }
-
-    debug('runtime is ready');
 
     // TODO(jasoncampbell): When this happens the window really, really needs to
     // be reloaded. In order to safely reload the page state should be stored or
@@ -123,8 +116,6 @@ Client.prototype.init = function(callback) {
     // <prefix>/reader/syncgroup
     var name = getName(runtime, client.id);
 
-    debug('name: %s', name);
-
     client.name = name;
 
     client.emit('runtime', runtime);
@@ -137,14 +128,13 @@ Client.prototype.serve = function(runtime, callback) {
   var client = this;
   var service = client.service;
 
+  debug('serve: %s', client.name);
   runtime.newServer(client.name, service, onserve);
 
   function onserve(err, server) {
     if (err) {
       return callback(err);
     }
-
-    debug('service is ready');
 
     window.addEventListener = window.addEventListener || noop;
     window.addEventListener('beforeunload', beforeunload);
@@ -165,14 +155,13 @@ Client.prototype.serve = function(runtime, callback) {
   }
 };
 
-Client.prototype.glob = function(runtime, onmount) {
-  onmount = once(onmount);
+// Globs until mounted.
+Client.prototype.glob = function(runtime, callback) {
+  callback = once(callback);
 
   var client = this;
-  var peers = client.peers;
   // Glob pattern based on "<prefix>/reader/:id/app"
   var pattern = prefix(runtime).replace('/chrome', '') + '/reader/*/app';
-
   var stream = glob({
     name: client.name,
     runtime: runtime,
@@ -180,30 +169,37 @@ Client.prototype.glob = function(runtime, onmount) {
     timeout: ms('12s')
   });
 
-  stream.on('error', function(err) {
-    debug('glob-stream error: %s', err.stack);
-    client.emit('error', err);
-  });
+  // Glob stream ends once the mounted client.name has been discovered or there
+  // is an error.
+  //
+  // NOTE: Streaming names through service connection has been commented out,
+  // this will will be addressed later as the previous client/service model is
+  // unessecary given the way syncbase is being leveraged.
+  //
+  // TODO(jasoncampbell): Hook up a simple discovery mechanism to detect new
+  // peers and share information about constellation state like disconnects.
+  eos(stream, { readable: false }, callback);
 
-  stream
-  .pipe(filter(peers))
-  .pipe(through(write))
-  .on('error', function(err) {
-    debug('peer-stream error: %s', err.stack);
-    client.emit('error', err);
-  });
 
-  function write(buffer, enc, cb) {
-    var name = buffer.toString();
-
-    client.connect(name);
-
-    if (name === client.name) {
-      onmount();
-    }
-
-    cb(null, buffer);
-  }
+  // stream
+  // .pipe(filter(peers))
+  // .pipe(through(write))
+  // .on('error', function(err) {
+  //   debug('peer-stream error: %s', err.stack);
+  //   client.emit('error', err);
+  // });
+  //
+  // function write(buffer, enc, cb) {
+  //   var name = buffer.toString();
+  //
+  //   client.connect(name);
+  //
+  //   if (name === client.name) {
+  //     onmount();
+  //   }
+  //
+  //   cb(null, buffer);
+  // }
 };
 
 Client.prototype.connect = function(name) {
@@ -308,48 +304,6 @@ Client.prototype.remotes = function(status, mapper) {
   }
 
   return tasks;
-};
-
-Client.prototype.sendPDF = function(key, file, callback) {
-  var client = this;
-  var runtime = client.runtime;
-  var context = runtime.getContext();
-  var tasks = client.remotes('connected', createWorker);
-  var meta = {
-    hash: key,
-    name: file.name,
-    size: file.size,
-    type: file.type
-  };
-
-  // Execute tasks across peers in parallel.
-  parallel(tasks, function done(err, results) {
-    if (err) {
-      callback(err);
-      return;
-    }
-
-    callback(null, results);
-  });
-
-  function createWorker(peer) {
-    debug('created worker for remote %s', peer.uuid);
-    return worker;
-
-    function worker(callback) {
-      callback = once(callback);
-      debug('sending PDF (%d bytes) to %s', file.size, peer.uuid);
-
-      var promise = peer.remote.savePDF(context, meta, callback);
-      var stream = promise.stream;
-      var bs = new BlobReader(file);
-
-      bs.on('error', callback);
-      stream.on('end', callback);
-
-      bs.pipe(stream);
-    }
-  }
 };
 
 // TODO(jasoncampbell): Move naming related code into a separate module.

@@ -13,6 +13,7 @@ css_files := $(shell find browser -name "*.css")
 host ?= 127.0.0.1
 port ?= 8080
 syncbase_port ?= 4000
+cloudsync_port ?= 8000
 id ?= $(shell if test -e tmp/id; then cat tmp/id; else bin/cuid; fi)
 
 all: public/bundle.js node_modules
@@ -39,7 +40,7 @@ public/bundle.js: browser/main.js $(js_files) $(css_files) node_modules tmp
 		$< 1> $@
 
 .PHONY:
-distclean:
+distclean: clean
 	@$(RM) -fr node_modules
 	@v23 goext distclean
 
@@ -48,8 +49,9 @@ clean:
 	@$(RM) -fr npm-debug.log
 	@$(RM) -fr public/bundle.js
 	@$(RM) -fr tmp
-	@$(RM) -fr bin/syncbased
-	@$(RM) -fr bin/principal
+	@$(RM) -fr credentials
+	@$(RM) -f bin/principal
+	@$(RM) -f bin/syncbased
 
 .PHONY:
 lint: node_modules
@@ -100,4 +102,19 @@ syncbase: bin/syncbased credentials tmp
 		--v23.proxy="/ns.dev.v.io:8101/proxy" \
 		--v23.tcp.address=":$(syncbase_port)" \
 		--v23.credentials="credentials" \
-		--v23.permissions.literal='{"Admin":{"In":["$(blessing)"]},"Write":{"In":["$(blessing)"]},"Read":{"In":["$(blessing)"]},"Resolve":{"In":["$(blessing)"]},"Debug":{"In":["$(blessing)"]}}'
+		--v23.permissions.literal='{"Admin":{"In":["..."]},"Write":{"In":["..."]},"Read":{"In":["..."]},"Resolve":{"In":["..."]},"Debug":{"In":["..."]}}'
+
+.PHONY:
+cloudsync: bin/syncbased credentials tmp
+	$(eval blessing := $(shell bin/principal dump --v23.credentials=./credentials -s=true))
+	$(eval email := $(subst dev.v.io/u/,,$(blessing)))
+	./bin/syncbased \
+		--v=5 \
+		--alsologtostderr=false \
+		--root-dir="tmp/cloudsync" \
+		--name="users/$(email)/reader/cloudsync" \
+		--v23.namespace.root="/ns.dev.v.io:8101" \
+		--v23.proxy="/ns.dev.v.io:8101/proxy" \
+		--v23.tcp.address=":$(cloudsync_port)" \
+		--v23.credentials="credentials" \
+		--v23.permissions.literal='{"Admin":{"In":["..."]},"Write":{"In":["..."]},"Read":{"In":["..."]},"Resolve":{"In":["..."]},"Debug":{"In":["..."]}}'

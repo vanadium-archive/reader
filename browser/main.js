@@ -21,8 +21,13 @@ var router = require('./router');
 var routes = require('./routes');
 var vanadium = require('./vanadium');
 var window = require('global/window');
+var qs = require('qs');
+var url = require('url');
 
+// Expose globals for debugging.
 window.debug = require('debug');
+window.require = require;
+global.require = require;
 
 domready(function ondomready() {
   debug('domready');
@@ -38,29 +43,52 @@ domready(function ondomready() {
 
   // TODO(jasoncampbell): add an error component for aggregating, logging, and
   // displaying errors in the UI.
-  state.error(function(err) {
+  state.error(function onstateerror(err) {
     if (!err) {
       return;
     }
 
-    console.error('TODO: add an error component');
+    console.error('TODO(jasoncampbell): add an error component');
     console.error(err.stack);
+
+    for (var key in err) {
+      if (err.hasOwnProperty(key)) {
+        console.error('* %s => %o', key, err[key]);
+      }
+    }
   });
 
   router(state, routes).on('notfound', notfound);
+
+  // Quick way to change the id of the running application using a query param.
+  // TODO(jasoncampbell): Create a configuration screen/component.
+  var query = url.parse(window.location.href).query;
+  var id = qs.parse(query).id || process.env.ID;
+
+  debug('##### %s #####', id);
 
   // The vanadium client is coupled to the application state here so that async
   // code paths in the ./vanadium modules can be isolated to the application
   // initialization. This allows components to be separately tested/interacted
   // with as mappings between data and UI without being tangled into the
   // local vanadium discovery process.
-  var client = vanadium({
-    id: process.env.ID,
-    state: state.constellation
+  var client = vanadium({ id: id });
+
+  client.on('error', function onvanadiumerror(err) {
+    state.error.set(err);
   });
 
   client.on('syncbase', function onsyncbase(store) {
     state.store.set(store);
+
+    store.sync(function onsync(err) {
+      if (err) {
+        state.error.set(err);
+        return;
+      }
+
+      debug('store.sync succeeded!');
+    });
 
     // Setup watch.
     var ws = store.createWatchStream('files');
@@ -71,14 +99,23 @@ domready(function ondomready() {
       }
     });
 
-    ws.on('data', function(change) {
+    ws.on('data', function onwatchchange(change) {
       debug('watch stream change: %o', change);
+      // NOTE: this triggers a recursion between clients :(
+
+      if (change.type === 'put') {
+        state.files.collection.put(change.key, change.value);
+      }
+
+      if (change.type === 'delete') {
+        state.files.collection.delete(change.key);
+      }
     });
 
     // Scan all keys and populate state.
     var stream = store.createReadStream('files');
 
-    stream.on('data', function(data) {
+    stream.on('data', function onreadstreamdata(data) {
       state.files.collection.put(data.key, data.value);
     });
 
@@ -113,8 +150,6 @@ domready(function ondomready() {
     });
 
     each(collection, function(key, value) {
-      debug('each iterator: %o', value);
-
       store.put('files', value, function callback(err, file) {
         if (err) {
           state.error.set(err);

@@ -3,23 +3,37 @@
 // license that can be found in the LICENSE file.
 
 var assert = require('assert');
+var eos = require('end-of-stream');
+var error = require('./error');
+var format = require('util').format;
 var ms = require('ms');
+var once = require('once');
 var through = require('through2');
 
 module.exports = createStream;
 
-// Returns a flowing glob stream that emits vanadium names. If options.name is
-// present, the stream will recursively call glob until that name is discovered.
+// Returns a flowing glob stream that emits vanadium names, will recursively
+// glob until options.name is discovered.
 function createStream(options) {
   var found = false;
   var stream = through(write);
+  var runtime = options.runtime;
+  var pattern = options.pattern;
 
   assert.ok(options.name, 'options.name is required');
 
-  glob(options, stream, done);
+  _glob();
 
   return stream;
 
+  function _glob() {
+    var gs = glob(runtime, pattern);
+
+    eos(gs, end);
+    gs.pipe(stream);
+  }
+
+  // Track if options.name was found.
   function write(buffer, enc, callback) {
     if (options.name === buffer.toString()) {
       found = true;
@@ -28,56 +42,43 @@ function createStream(options) {
     callback(null, buffer);
   }
 
-  function done(err) {
+  function end(err) {
     if (err) {
       stream.emit('error', err);
-      stream.end();
+      return;
     }
 
     if (found) {
       stream.end();
     } else {
-      glob(options, stream, done);
+      _glob(runtime, pattern);
     }
   }
 }
 
-// This function will do a single run of namespace.glob and proxy data events to
-// the passed in stream, the callback will be called when the stream has
-// finished.
-//
-// NOTE: recursive polling of the mountable eats about 10% of my CPU on a
-// macbook air.
-function glob(options, stream, done) {
-  assert.ok(options, 'options object is required');
-  assert.ok(options.runtime, 'options.runtime is required');
-  assert.ok(options.pattern, 'options.pattern is required');
-
-  var runtime = options.runtime;
+function glob(runtime, pattern) {
   var namespace = runtime.getNamespace();
-  var context = runtime.getContext().withTimeout(options.timeout || ms('12s'));
-  var promise = namespace.glob(context, options.pattern);
+  var context = runtime.getContext();
+  var ctx = context.withTimeout(ms('10s'));
+  var done = once(end);
+  var stream = through.obj(write);
 
-  promise.catch(function(err) {
-    throw err;
-  });
+  var gs = namespace.glob(ctx, pattern, done).stream;
 
-  // NOTE: The return value from .glob is a promise, to access the stream use
-  // the .stream attribute.
-  promise.stream.on('data', function onentry(entry) {
-    stream.write(entry.name);
-  });
+  eos(gs, done);
+  gs.pipe(stream);
 
-  // NOTE: Piping namespace.glob streams causes all kinds of errors which do not
-  // directly related to the stream being ended.
-  // TODO(jasoncampbell): This thing leaks random errors like crazy, this should
-  // get fixed so that errors are related and actionable and tools like
-  // end-of-stream can be used.
-  promise.stream.on('error', function onerror(err) {
-    throw err;
-    // maybe proxying errors wont be that bad if vanadium errors can be detected
-    // and split out...
-  });
+  return stream;
 
-  promise.stream.on('end', done);
+  function end(err) {
+    if (err) {
+      var message = format('Globbing "%s" failed', pattern);
+      stream.emit('error', error(err, message));
+    }
+  }
+
+  // Transform Glob entries to single names.
+  function write(entry, enc, cb) {
+    cb(null, entry.name);
+  }
 }

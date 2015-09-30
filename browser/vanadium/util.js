@@ -5,21 +5,8 @@
 var pathToRegexp = require('path-to-regexp');
 
 module.exports = {
-  timeout: timeout,
-  cancel: cancel,
   parseName: parseName
 };
-
-function timeout(runtime, miliseconds) {
-  var context = runtime.getContext();
-  return context.withTimeout(miliseconds || 5000);
-}
-
-function cancel(runtime) {
-  var context = runtime.getContext();
-  return context.withCancel();
-}
-
 
 function parseName(name) {
   var keys = [];

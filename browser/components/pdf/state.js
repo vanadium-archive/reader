@@ -9,8 +9,6 @@ var window = require('global/window');
 module.exports = create;
 
 function create(options) {
-  debug('creating PDF state: %o', options);
-
   var state = hg.state({
     error: hg.value(null),
     pdf: hg.value(null),
