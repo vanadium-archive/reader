@@ -6,7 +6,9 @@ var debug = require('debug')('reader:routes');
 
 module.exports = {
   '/#!/': index,
-  '/#!/:id': show
+  '/#!/:id': show,
+  // For testing purposes
+  '/#!/moving': overlay
 };
 
 function index(state, params, route) {
@@ -15,4 +17,10 @@ function index(state, params, route) {
 
 function show(state, params, route) {
   debug('show: %o', params);
+}
+
+// TODO(jwnichols): Remove once the device management UI is integrated
+// into the UI.  Provides an entry point for testing.
+function overlay(state, params, route) {
+  state.mover.moving.set(true);
 }

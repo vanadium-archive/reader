@@ -16,6 +16,7 @@ var header = require('./components/header');
 var hg = require('mercury');
 var insert = require('insert-css');
 var pdf = require('./components/pdf');
+var mover = require('./components/mover');
 var removed = require('./util').removed;
 var router = require('./router');
 var routes = require('./routes');
@@ -37,6 +38,7 @@ domready(function ondomready() {
     store: hg.value(null),
     files: files.state(),
     pdf: pdf.state({}),
+    mover: mover.state({}),
     constellation: constellation.state(),
     error: hg.value(null)
   });
@@ -169,6 +171,7 @@ function render(state) {
   return h('.reader-app', [
     hg.partial(header.render, state),
     hg.partial(content, state),
+    hg.partial(mover.render, state.mover, state.mover.channels),
     hg.partial(footer.render, state, state.files.channels.add)
   ]);
 }
