@@ -1,12 +1,12 @@
 /.jiri
 #TODO(nlacasse): Get rid of .v23 below once v23->jiri transition is complete.
 /.v23
-/bin/principal
-/bin/syncbased
-/coverage
-/credentials
-/disc.html
-/node_modules
-/npm-debug.log
-/public/bundle.*
-/tmp
+web/bin/principal
+web/bin/syncbased
+web/coverage
+web/credentials
+web/disc.html
+web/node_modules
+web/npm-debug.log
+web/public/bundle.*
+web/tmp
