@@ -6,5 +6,9 @@ SHELL := /bin/bash
 .SUFFIXES:
 
 .PHONY:
+clean:
+	$(MAKE) -C web clean
+
+.PHONY:
 test:
 	$(MAKE) -C web test
