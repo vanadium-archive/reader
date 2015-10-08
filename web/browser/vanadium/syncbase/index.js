@@ -451,12 +451,14 @@ Store.prototype.sync = function(callback) {
     var spec = new syncbase.nosql.SyncGroupSpec({
       description: 'reader syncgroup ',
       perms: permissions,
-      // Prefixes are structured by <table/keyspace>:<key-pattern> where
-      // <key-pattern> matches keys (rows in syncbase vernacular). The rows/keys
-      // are mounted as <name>/reader/db/<table>/<key/row> so the prefixes can
-      // be thought of as a vanadium namespace glob on the last two names with a
-      // different separator.
-      prefixes: [ 'files:c' ],
+      // Prefixes are structured as {<tableName>, <keyPrefix>} where <keyPrefix>
+      // matches row keys. Rows have Vanadium object names of the form
+      // <syncbaseName>/reader/db/<table>/<rowKey>, so a syncgroup prefix can be
+      // thought of as a vanadium namespace glob over rows.
+      prefixes: [new syncbase.nosql.SyncGroupPrefix({
+        tableName: 'files',
+        rowPrefix: 'c'
+      })],
       // mountTables: [ ... ] - actually a rendezvous point that is
       // permissable to mount to by the syncbase instance hosting the sync
       // group.
