@@ -418,7 +418,7 @@ Store.prototype.sync = function(callback) {
   ].join('/');
   // TODO(jasoncampbell): Find docs or something about what this is and what it
   // does.
-  var info = new syncbase.nosql.SyncGroupMemberInfo({
+  var info = new syncbase.nosql.SyncgroupMemberInfo({
     syncPriority: 8
   });
 
@@ -448,14 +448,14 @@ Store.prototype.sync = function(callback) {
           [ 'Debug',   { 'in': [ '...' ] } ]
         ]);
 
-    var spec = new syncbase.nosql.SyncGroupSpec({
+    var spec = new syncbase.nosql.SyncgroupSpec({
       description: 'reader syncgroup ',
       perms: permissions,
       // Prefixes are structured as {<tableName>, <keyPrefix>} where <keyPrefix>
       // matches row keys. Rows have Vanadium object names of the form
       // <syncbaseName>/reader/db/<table>/<rowKey>, so a syncgroup prefix can be
       // thought of as a vanadium namespace glob over rows.
-      prefixes: [new syncbase.nosql.SyncGroupPrefix({
+      prefixes: [new syncbase.nosql.SyncgroupPrefix({
         tableName: 'files',
         rowPrefix: 'c'
       })],
@@ -470,7 +470,7 @@ Store.prototype.sync = function(callback) {
     });
 
     var ctx = context.withTimeout(ms('5s'));
-    var group = _db.syncGroup(syncname);
+    var group = _db.syncgroup(syncname);
     group.create(ctx, spec, info, oncreate);
   }
 
@@ -488,7 +488,7 @@ Store.prototype.sync = function(callback) {
       }
 
       var ctx = context.withTimeout(ms('5s'));
-      var group = db.syncGroup(syncname);
+      var group = db.syncgroup(syncname);
 
       debug('joining syncgroup: %s', syncname);
       group.join(ctx, info, onjoin);
