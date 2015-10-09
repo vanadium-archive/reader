@@ -21,22 +21,30 @@ import android.view.View;
  */
 public class PdfChooserActivity extends Activity {
 
+    private RecyclerView mRecyclerView;
+    private PdfListAdapter mAdapter;
+
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_pdf_chooser);
 
-        RecyclerView recyclerView = (RecyclerView) findViewById(R.id.pdf_list);
-        recyclerView.setHasFixedSize(true);
+        mRecyclerView = (RecyclerView) findViewById(R.id.pdf_list);
+        mRecyclerView.setHasFixedSize(true);
 
         // Use the linear layout manager for the recycler view
         RecyclerView.LayoutManager layoutManager= new LinearLayoutManager(this);
-        recyclerView.setLayoutManager(layoutManager);
+        mRecyclerView.setLayoutManager(layoutManager);
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
 
         // The adapter for the recycler view
-        PdfListAdapter adapter = new PdfListAdapter();
+        mAdapter = new PdfListAdapter(this);
 
         // When a file is clicked from the list, start the PdfViewerActivity.
-        adapter.setOnPdfFileClickListener(new PdfListAdapter.OnPdfFileClickListener() {
+        mAdapter.setOnPdfFileClickListener(new PdfListAdapter.OnPdfFileClickListener() {
             @Override
             public void onPdfFileClick(PdfListAdapter adapter, View v, int position) {
                 Intent intent = PdfViewerActivity.createIntent(
@@ -46,7 +54,15 @@ public class PdfChooserActivity extends Activity {
             }
         });
 
-        recyclerView.setAdapter(adapter);
+        mRecyclerView.setAdapter(mAdapter);
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+
+        mAdapter.stop();
+        mAdapter = null;
     }
 
     @Override

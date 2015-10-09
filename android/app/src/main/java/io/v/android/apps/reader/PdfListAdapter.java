@@ -4,6 +4,7 @@
 
 package io.v.android.apps.reader;
 
+import android.content.Context;
 import android.support.v7.widget.CardView;
 import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
@@ -11,18 +12,17 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
+import io.v.android.apps.reader.DB.Listener;
+import io.v.android.apps.reader.DB.PdfFileList;
+
 /**
  * Adapter that binds the list of pdf files to the corresponding card views.
  */
-public class PdfListAdapter extends RecyclerView.Adapter<PdfListAdapter.ViewHolder> {
+public class PdfListAdapter extends RecyclerView.Adapter<PdfListAdapter.ViewHolder>
+        implements Listener {
 
-    private OnPdfFileClickListener mListener;
-
-    // TODO(youngseokyoon): Replace this temporary list with real data coming from the syncbase.
-    private static final String[] SAMPLE_PDF_LIST = {
-            "Foo.pdf",
-            "Bar.pdf",
-    };
+    private OnPdfFileClickListener mClickListener;
+    private PdfFileList mPdfFileList;
 
     public class ViewHolder extends RecyclerView.ViewHolder {
         public CardView mCardView;
@@ -36,16 +36,20 @@ public class PdfListAdapter extends RecyclerView.Adapter<PdfListAdapter.ViewHold
             mCardView.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    if (mListener != null) {
-                        mListener.onPdfFileClick(PdfListAdapter.this, v, getPosition());
+                    if (mClickListener != null) {
+                        mClickListener.onPdfFileClick(PdfListAdapter.this, v, getPosition());
                     }
                 }
             });
         }
     }
 
-    public PdfListAdapter() {
-        mListener = null;
+    public PdfListAdapter(Context context) {
+        mClickListener = null;
+
+        DB db = DB.Singleton.get(context);
+        mPdfFileList = db.getPdfFileList();
+        mPdfFileList.setListener(this);
     }
 
     @Override
@@ -63,16 +67,21 @@ public class PdfListAdapter extends RecyclerView.Adapter<PdfListAdapter.ViewHold
     }
 
     public String getItem(int position) {
-        return SAMPLE_PDF_LIST[position];
+        return mPdfFileList.getPdfFile(position).getName();
     }
 
     @Override
     public int getItemCount() {
-        return SAMPLE_PDF_LIST.length;
+        return mPdfFileList.getItemCount();
     }
 
-    public void setOnPdfFileClickListener(OnPdfFileClickListener listener) {
-        mListener = listener;
+    public void setOnPdfFileClickListener(OnPdfFileClickListener clickListener) {
+        mClickListener = clickListener;
+    }
+
+    public void stop() {
+        mPdfFileList.discard();
+        mPdfFileList = null;
     }
 
     /**
