@@ -42,7 +42,7 @@ public/bundle.js: browser/main.js $(js_files) $(css_files) node_modules tmp
 .PHONY:
 distclean: clean
 	@$(RM) -fr node_modules
-	@v23 goext distclean
+	@jiri goext distclean
 
 .PHONY:
 clean:
@@ -74,10 +74,10 @@ start: all
 	st --port $(port) --host $(host) --dir public --no-cache --index index.html
 
 bin/principal:
-	v23 go build -a -o $@ v.io/x/ref/cmd/principal
+	jiri go build -a -o $@ v.io/x/ref/cmd/principal
 
 bin/syncbased:
-	v23 go build -a -o $@ v.io/x/ref/services/syncbase/syncbased
+	jiri go build -a -o $@ v.io/x/ref/services/syncbase/syncbased
 
 tmp:
 	mkdir -p $@
