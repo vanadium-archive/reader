@@ -4,7 +4,9 @@
 
 package io.v.android.apps.reader;
 
+import android.app.Activity;
 import android.content.Context;
+import android.content.Intent;
 
 /**
  * Borrowed the idea of having a DB interface from syncslides.
@@ -25,7 +27,8 @@ public interface DB {
                     result = instance;
                     if (result == null) {
                         // TODO(youngseokyoon): Replace this with a syncbase DB.
-                        instance = result = new FakeDB(context);
+//                        instance = result = new FakeDB(context);
+                        instance = result = new SyncbaseDB(context);
                     }
                 }
             }
@@ -33,6 +36,23 @@ public interface DB {
             return result;
         }
     }
+
+    /**
+     * Perform initialization steps.  This method must be called early in the lifetime
+     * of the activity.  As part of the initialization, it might send an intent to
+     * another activity.
+     *
+     * @param activity implements onActivityResult() to call into DB.onActivityResult.
+     */
+    void init(Activity activity);
+
+    /**
+     * If init() sent an intent to another Activity, the result must be forwarded
+     * from our app's activity to this method.
+     *
+     * @return true if the requestCode matches an intent sent by this implementation.
+     */
+    boolean onActivityResult(int requestCode, int resultCode, Intent data);
 
     /**
      * Represents a PDF file and its metadata.

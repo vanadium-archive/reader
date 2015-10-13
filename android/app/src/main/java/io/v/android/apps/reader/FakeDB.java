@@ -4,7 +4,9 @@
 
 package io.v.android.apps.reader;
 
+import android.app.Activity;
 import android.content.Context;
+import android.content.Intent;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -73,6 +75,16 @@ public class FakeDB implements DB {
         public void discard() {
             // Nothing to do.
         }
+    }
+
+    public void init(Activity activity) {
+        // Nothing to do.
+    }
+
+    @Override
+    public boolean onActivityResult(int requestCode, int resultCode, Intent data) {
+        // Nothing to do.
+        return false;
     }
 
     @Override

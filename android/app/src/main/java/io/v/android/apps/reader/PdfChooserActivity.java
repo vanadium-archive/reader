@@ -23,9 +23,15 @@ public class PdfChooserActivity extends Activity {
 
     private RecyclerView mRecyclerView;
     private PdfListAdapter mAdapter;
+    private DB mDB;
 
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        // Initialize the DB
+        mDB = DB.Singleton.get(this);
+        mDB.init(this);
+
         setContentView(R.layout.activity_pdf_chooser);
 
         mRecyclerView = (RecyclerView) findViewById(R.id.pdf_list);
@@ -61,7 +67,9 @@ public class PdfChooserActivity extends Activity {
     protected void onStop() {
         super.onStop();
 
-        mAdapter.stop();
+        if (mAdapter != null) {
+            mAdapter.stop();
+        }
         mAdapter = null;
     }
 
@@ -85,5 +93,14 @@ public class PdfChooserActivity extends Activity {
         }
 
         return super.onOptionsItemSelected(item);
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (mDB.onActivityResult(requestCode, resultCode, data)) {
+            return;
+        }
+        // Any other activity results would be handled here.
     }
 }
