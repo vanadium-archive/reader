@@ -66,8 +66,8 @@ coverage: $(js_files) node_modules
 	@istanbul cover --report html --print detail ./test/index.js
 	@touch coverage
 
-disk.html: browser/index.js $(js_files) node_modules
-	browserify --full-paths $< | discify > $@
+disk.html: browser/main.js $(js_files) node_modules
+	browserify --full-paths --transform ./lib/transform-css $< | discify > $@
 
 .PHONY:
 start: all

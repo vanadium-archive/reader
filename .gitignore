@@ -5,8 +5,14 @@ web/bin/principal
 web/bin/syncbased
 web/coverage
 web/credentials
-web/disc.html
+web/disk.html
 web/node_modules
 web/npm-debug.log
 web/public/bundle.*
 web/tmp
+
+# VDL generated stubs should be ignored
+web/browser/vanadium/v.io/*
+web/browser/vanadium/vdl/*
+android/src/main/java/io/v/*
+android/src/main/java/vdl/*
