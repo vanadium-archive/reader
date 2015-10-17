@@ -1,6 +1,7 @@
 MAKEFLAGS += --warn-undefined-variables
 PATH := node_modules/.bin:$(PATH)
-PATH := $(PATH):$(JIRI_ROOT)/third_party/cout/node/bin
+NODE_DIR := $(shell jiri v23-profile env --profile=nodejs V23_TARGET_INSTALLATION_DIR=)
+PATH := $(PATH):$(NODE_DIR)/bin
 SHELL := /bin/bash
 
 .SHELLFLAGS := -eu -o pipefail -c
