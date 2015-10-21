@@ -23,8 +23,5 @@ function hashbang(string) {
     href = '#!/' + href;
   }
 
-  // add leading slash
-  href = '/' + href;
-
   return href;
 }

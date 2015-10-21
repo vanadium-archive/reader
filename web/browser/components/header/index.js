@@ -5,7 +5,7 @@
 var h = require('mercury').h;
 var insert = require('insert-css');
 var css = require('./index.css');
-var anchor = require('../../router/anchor');
+var anchor = require('../router/anchor');
 
 module.exports = {
   render: render

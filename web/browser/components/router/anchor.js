@@ -4,13 +4,15 @@
 
 var hg = require('mercury');
 var h = require('mercury').h;
-var options = { preventDefault: true };
 var href = require('./index').href;
-var hashbang = require('./hashbang');
+var url = require('url');
+var document = require('global/document');
+// var hashbang = require('./hashbang');
 
 // Create a handle for dom-delegation. This step treats the generated `handle`
 // the same as a mercury channel.
 var handle = hg.Delegator.allocateHandle(click);
+var options = { preventDefault: true };
 
 module.exports = anchor;
 
@@ -27,10 +29,6 @@ module.exports = anchor;
 // Clicking the generated link will fire the callbacks in the router and have
 // the application state update appropriately.
 function anchor(attributes, text) {
-  // Ensure that the href has the hashbang boilerplate, this makes ctrl+click
-  // open the right url for loading the app in the correct state.
-  attributes.href = hashbang(attributes.href);
-
   attributes['ev-click'] = hg.sendClick(handle, {
     href: attributes.href
   }, options);
@@ -43,5 +41,7 @@ function anchor(attributes, text) {
 // Used as a mercury channel to update the current route using the exported
 // `router.href` observable.
 function click(data) {
-  href.set(data.href);
+  var current = String(document.location.href);
+  var destination = url.resolve(current, data.href);
+  href.set(destination);
 }

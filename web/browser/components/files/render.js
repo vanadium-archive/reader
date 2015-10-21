@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-var anchor = require('../../router/anchor');
+var anchor = require('../router/anchor');
 var click = require('../../events/click');
 var css = require('./index.css');
 var format = require('format');
