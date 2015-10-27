@@ -14,5 +14,4 @@ web/tmp
 # VDL generated stubs should be ignored
 web/browser/vanadium/v.io/*
 web/browser/vanadium/vdl/*
-android/src/main/java/io/v/*
-android/src/main/java/vdl/*
+generated-src

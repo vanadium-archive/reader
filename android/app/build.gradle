@@ -23,6 +23,9 @@ apply plugin: 'android-sdk-manager'
 // It's an Android application.
 apply plugin: 'com.android.application'
 
+// It's going to use VDL.
+apply plugin: 'io.v.vdl'
+
 repositories {
     mavenCentral()
     maven {
@@ -61,4 +64,10 @@ dependencies {
     compile 'com.joanzapata.pdfview:android-pdfview:1.0.4@aar'
     compile 'io.v:vanadium:0.1-SNAPSHOT'
     compile 'io.v:vanadium-android:0.1-SNAPSHOT'
+}
+
+vdl {
+    inputPaths += System.getenv("JIRI_ROOT") + '/release/go/src'
+    inputPaths += '../..'
+    packageTranslations += 'vdl->io.v.android.apps.reader'
 }

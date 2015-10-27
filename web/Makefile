@@ -3,6 +3,7 @@ PATH := node_modules/.bin:$(PATH)
 NODE_DIR := $(shell jiri v23-profile env --profile=nodejs V23_TARGET_INSTALLATION_DIR=)
 PATH := $(PATH):$(NODE_DIR)/bin
 SHELL := /bin/bash
+VDLPATH := $(JIRI_ROOT)/release/go/src:$(shell cd ..; pwd)
 
 .SHELLFLAGS := -eu -o pipefail -c
 .DEFAULT_GOAL := all
@@ -10,6 +11,7 @@ SHELL := /bin/bash
 
 js_files := $(shell find browser -name "*.js")
 css_files := $(shell find browser -name "*.css")
+vdl_files := $(wildcard ../vdl/*.vdl)
 
 host ?= 127.0.0.1
 port ?= 8080
@@ -53,6 +55,8 @@ clean:
 	@$(RM) -fr credentials
 	@$(RM) -f bin/principal
 	@$(RM) -f bin/syncbased
+	@$(RM) -fr browser/vanadium/v.io
+	@$(RM) -fr browser/vanadium/vdl
 
 .PHONY:
 lint: node_modules
@@ -120,3 +124,13 @@ cloudsync: bin/syncbased credentials tmp
 		--v23.tcp.address=":$(cloudsync_port)" \
 		--v23.credentials="credentials" \
 		--v23.permissions.literal='{"Admin":{"In":["..."]},"Write":{"In":["..."]},"Read":{"In":["..."]},"Resolve":{"In":["..."]},"Debug":{"In":["..."]}}'
+
+.PHONY:
+vdl: browser/vanadium/vdl/index.js
+	@true  # silence "make: Nothing to be done for `vdl'."
+
+browser/vanadium/vdl/index.js: $(vdl_files)
+	VDLPATH=$(VDLPATH) vdl generate --lang javascript \
+		-js-out-dir ./browser/vanadium \
+		vdl
+
