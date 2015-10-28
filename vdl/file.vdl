@@ -14,4 +14,5 @@ type File struct {
   Title string
   Size int64
   Type string
+  DeviceSets map[string]DeviceSet
 }
