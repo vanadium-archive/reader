@@ -13,6 +13,8 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 
+import io.v.android.apps.reader.db.DB;
+
 /**
  * Activity that displays all the available pdf files in a list.
  *

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package io.v.android.apps.reader;
+package io.v.android.apps.reader.db;
 
 import android.app.Activity;
 import android.content.Context;
@@ -13,8 +13,8 @@ import android.widget.Toast;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 
-import java.io.File;
-
+import io.v.android.apps.reader.model.Listener;
+import io.v.android.apps.reader.model.File;
 import io.v.android.libs.security.BlessingsManager;
 import io.v.android.v23.V;
 import io.v.android.v23.services.blessing.BlessingCreationException;
@@ -146,7 +146,7 @@ public class SyncbaseDB implements DB {
 
     private void setupSyncbase(Blessings blessings) {
         // Prepare the syncbase storage directory.
-        File storageDir = new File(mContext.getFilesDir(), "syncbase");
+        java.io.File storageDir = new java.io.File(mContext.getFilesDir(), "syncbase");
         storageDir.mkdirs();
 
         try {
@@ -181,29 +181,20 @@ public class SyncbaseDB implements DB {
             if (!mFiles.exists(vContext)) {
                 mFiles.create(vContext, mPermissions);
             }
-
-            // TODO(youngseokyoon): remove this temporary test.
-            testSyncbaseTable();
         } catch (VException e) {
             handleError("Couldn't setup syncbase service: " + e.getMessage());
         }
     }
 
-    private void testSyncbaseTable() throws VException {
-        mFiles.put(vContext, "testKey", "testValue", String.class);
-        String result = (String) mFiles.get(vContext, "testKey", String.class);
-        Log.d(TAG, "TestResult: " + result);
-    }
-
     // TODO(youngseokyoon): Remove once the list is implemented properly.
-    private static class EmptyPdfFileList implements DB.PdfFileList {
+    private static class EmptyFileList implements DBList<File> {
         @Override
         public int getItemCount() {
             return 0;
         }
 
         @Override
-        public PdfFile getPdfFile(int position) {
+        public File getItem(int position) {
             return null;
         }
 
@@ -217,8 +208,8 @@ public class SyncbaseDB implements DB {
     }
 
     @Override
-    public PdfFileList getPdfFileList() {
-        return new EmptyPdfFileList();
+    public DBList<File> getFileList() {
+        return new EmptyFileList();
     }
 
     private void handleError(String msg) {

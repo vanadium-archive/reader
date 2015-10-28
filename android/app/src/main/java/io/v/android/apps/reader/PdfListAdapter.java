@@ -12,8 +12,10 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
-import io.v.android.apps.reader.DB.Listener;
-import io.v.android.apps.reader.DB.PdfFileList;
+import io.v.android.apps.reader.db.DB;
+import io.v.android.apps.reader.db.DB.DBList;
+import io.v.android.apps.reader.model.Listener;
+import io.v.android.apps.reader.model.File;
 
 /**
  * Adapter that binds the list of pdf files to the corresponding card views.
@@ -22,7 +24,7 @@ public class PdfListAdapter extends RecyclerView.Adapter<PdfListAdapter.ViewHold
         implements Listener {
 
     private OnPdfFileClickListener mClickListener;
-    private PdfFileList mPdfFileList;
+    private DBList<File> mPdfFileList;
 
     public class ViewHolder extends RecyclerView.ViewHolder {
         public CardView mCardView;
@@ -48,7 +50,7 @@ public class PdfListAdapter extends RecyclerView.Adapter<PdfListAdapter.ViewHold
         mClickListener = null;
 
         DB db = DB.Singleton.get(context);
-        mPdfFileList = db.getPdfFileList();
+        mPdfFileList = db.getFileList();
         mPdfFileList.setListener(this);
     }
 
@@ -67,7 +69,7 @@ public class PdfListAdapter extends RecyclerView.Adapter<PdfListAdapter.ViewHold
     }
 
     public String getItem(int position) {
-        return mPdfFileList.getPdfFile(position).getName();
+        return mPdfFileList.getItem(position).getTitle();
     }
 
     @Override
