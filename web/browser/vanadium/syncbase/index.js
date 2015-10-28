@@ -455,9 +455,9 @@ Store.prototype.sync = function(callback) {
       // matches row keys. Rows have Vanadium object names of the form
       // <syncbaseName>/reader/db/<table>/<rowKey>, so a syncgroup prefix can be
       // thought of as a vanadium namespace glob over rows.
-      prefixes: [new syncbase.nosql.SyncgroupPrefix({
+      prefixes: [new syncbase.nosql.TableRow({
         tableName: 'files',
-        rowPrefix: 'c'
+        row: 'c'
       })],
       // mountTables: [ ... ] - actually a rendezvous point that is
       // permissable to mount to by the syncbase instance hosting the sync
