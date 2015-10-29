@@ -8,6 +8,7 @@ type DeviceMeta struct {
   DeviceId string
   Page int32
   Zoom int32
+  Linked bool
 }
 
 type DeviceSet struct {
