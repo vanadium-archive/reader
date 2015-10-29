@@ -12,8 +12,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import io.v.android.apps.reader.model.Listener;
-import io.v.android.apps.reader.model.File;
-import io.v.v23.services.syncbase.nosql.BlobRef;
+import io.v.android.apps.reader.vdl.File;
 
 /**
  * A fake implementation of the DB interface for manual testing.
@@ -31,62 +30,20 @@ public class FakeDB implements DB {
         mFileList = new FakeFileList();
     }
 
-    class FakeFile implements File {
+    static class FakeFileList implements DBList<File> {
 
-        private String mId;
-        private BlobRef mRef;
-        private String mTitle;
-        private long mSize;
-        private String mType;
-
-        public FakeFile(String title) {
-            this(null, null, title, 0, null);
-        }
-
-        public FakeFile(String id, BlobRef ref, String title, long size, String type) {
-            mId = id;
-            mRef = ref;
-            mTitle = title;
-            mSize = size;
-            mType = type;
-        }
-
-        @Override
-        public String getId() {
-            return mId;
-        }
-
-        @Override
-        public BlobRef getRef() {
-            return mRef;
-        }
-
-        @Override
-        public String getTitle() {
-            return mTitle;
-        }
-
-        @Override
-        public long getSize() {
-            return mSize;
-        }
-
-        @Override
-        public String getType() {
-            return mType;
-        }
-    }
-
-    class FakeFileList implements DBList<File> {
-
-        private List<FakeFile> mFiles;
+        private List<File> mFiles;
         private Listener mListener;
 
         public FakeFileList() {
             mFiles = new ArrayList<>();
             for (String fileName : FILE_NAMES) {
-                mFiles.add(new FakeFile(fileName));
+                mFiles.add(createFile(fileName));
             }
+        }
+
+        private static File createFile(String title) {
+            return new File(null, null, title, 0L, null);
         }
 
         @Override
@@ -95,7 +52,7 @@ public class FakeDB implements DB {
         }
 
         @Override
-        public FakeFile getItem(int position) {
+        public File getItem(int position) {
             return mFiles.get(position);
         }
 

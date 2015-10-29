@@ -15,7 +15,7 @@ import android.widget.TextView;
 import io.v.android.apps.reader.db.DB;
 import io.v.android.apps.reader.db.DB.DBList;
 import io.v.android.apps.reader.model.Listener;
-import io.v.android.apps.reader.model.File;
+import io.v.android.apps.reader.vdl.File;
 
 /**
  * Adapter that binds the list of pdf files to the corresponding card views.

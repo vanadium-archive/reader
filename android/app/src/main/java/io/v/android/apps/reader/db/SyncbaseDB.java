@@ -14,7 +14,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 
 import io.v.android.apps.reader.model.Listener;
-import io.v.android.apps.reader.model.File;
+import io.v.android.apps.reader.vdl.File;
 import io.v.android.libs.security.BlessingsManager;
 import io.v.android.v23.V;
 import io.v.android.v23.services.blessing.BlessingCreationException;

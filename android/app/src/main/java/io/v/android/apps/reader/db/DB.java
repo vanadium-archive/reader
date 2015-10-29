@@ -9,7 +9,7 @@ import android.content.Context;
 import android.content.Intent;
 
 import io.v.android.apps.reader.model.Listener;
-import io.v.android.apps.reader.model.File;
+import io.v.android.apps.reader.vdl.File;
 
 /**
  * Provides high-level methods for getting and setting the state of PDF reader.
