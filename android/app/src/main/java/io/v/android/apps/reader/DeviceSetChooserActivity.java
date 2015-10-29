@@ -16,15 +16,15 @@ import android.view.View;
 import io.v.android.apps.reader.db.DB;
 
 /**
- * Activity that displays all the available pdf files in a list.
+ * Activity that displays all the active device sets of this user.
  *
- * When the user clicks on one of the pdf files, it starts the PdfViewerActivity with the
- * corresponding file.
+ * When the user clicks on one of the device sets, it starts the PdfViewerActivity with the file
+ * associated with the device set.
  */
-public class PdfChooserActivity extends Activity {
+public class DeviceSetChooserActivity extends Activity {
 
     private RecyclerView mRecyclerView;
-    private PdfListAdapter mAdapter;
+    private DeviceSetListAdapter mAdapter;
     private DB mDB;
 
     protected void onCreate(Bundle savedInstanceState) {
@@ -34,9 +34,9 @@ public class PdfChooserActivity extends Activity {
         mDB = DB.Singleton.get(this);
         mDB.init(this);
 
-        setContentView(R.layout.activity_pdf_chooser);
+        setContentView(R.layout.activity_device_set_chooser);
 
-        mRecyclerView = (RecyclerView) findViewById(R.id.pdf_list);
+        mRecyclerView = (RecyclerView) findViewById(R.id.device_set_list);
         mRecyclerView.setHasFixedSize(true);
 
         // Use the linear layout manager for the recycler view
@@ -49,15 +49,15 @@ public class PdfChooserActivity extends Activity {
         super.onStart();
 
         // The adapter for the recycler view
-        mAdapter = new PdfListAdapter(this);
+        mAdapter = new DeviceSetListAdapter(this);
 
         // When a file is clicked from the list, start the PdfViewerActivity.
-        mAdapter.setOnPdfFileClickListener(new PdfListAdapter.OnPdfFileClickListener() {
+        mAdapter.setOnDeviceSetClickListener(new DeviceSetListAdapter.OnDeviceSetClickListener() {
             @Override
-            public void onPdfFileClick(PdfListAdapter adapter, View v, int position) {
+            public void onDeviceSetClick(DeviceSetListAdapter adapter, View v, int position) {
                 Intent intent = PdfViewerActivity.createIntent(
                         getApplicationContext(),
-                        adapter.getItem(position));
+                        adapter.getItemTitle(position));
                 startActivity(intent);
             }
         });
@@ -78,7 +78,7 @@ public class PdfChooserActivity extends Activity {
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
-        getMenuInflater().inflate(R.menu.menu_pdf_chooser, menu);
+        getMenuInflater().inflate(R.menu.menu_device_set_chooser, menu);
         return true;
     }
 

@@ -15,16 +15,18 @@ import android.widget.TextView;
 import io.v.android.apps.reader.db.DB;
 import io.v.android.apps.reader.db.DB.DBList;
 import io.v.android.apps.reader.model.Listener;
+import io.v.android.apps.reader.vdl.DeviceSet;
 import io.v.android.apps.reader.vdl.File;
 
 /**
- * Adapter that binds the list of pdf files to the corresponding card views.
+ * Adapter that binds the list of device sets to the corresponding card views.
  */
-public class PdfListAdapter extends RecyclerView.Adapter<PdfListAdapter.ViewHolder>
+public class DeviceSetListAdapter extends RecyclerView.Adapter<DeviceSetListAdapter.ViewHolder>
         implements Listener {
 
-    private OnPdfFileClickListener mClickListener;
-    private DBList<File> mPdfFileList;
+    private OnDeviceSetClickListener mClickListener;
+    private DB mDB;
+    private DBList<DeviceSet> mDeviceSets;
 
     public class ViewHolder extends RecyclerView.ViewHolder {
         public CardView mCardView;
@@ -33,64 +35,71 @@ public class PdfListAdapter extends RecyclerView.Adapter<PdfListAdapter.ViewHold
         public ViewHolder(CardView v) {
             super(v);
             mCardView = v;
-            mTextView = (TextView) mCardView.findViewById(R.id.pdf_list_item_text);
+            mTextView = (TextView) mCardView.findViewById(R.id.device_set_list_item_text);
 
             mCardView.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
                     if (mClickListener != null) {
-                        mClickListener.onPdfFileClick(PdfListAdapter.this, v, getPosition());
+                        mClickListener.onDeviceSetClick(DeviceSetListAdapter.this, v, getPosition());
                     }
                 }
             });
         }
     }
 
-    public PdfListAdapter(Context context) {
+    public DeviceSetListAdapter(Context context) {
         mClickListener = null;
 
-        DB db = DB.Singleton.get(context);
-        mPdfFileList = db.getFileList();
-        mPdfFileList.setListener(this);
+        mDB = DB.Singleton.get(context);
+        mDeviceSets = mDB.getDeviceSetList();
+        mDeviceSets.setListener(this);
     }
 
     @Override
     public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
         // Create a new view here.
         CardView v = (CardView) LayoutInflater.from(parent.getContext())
-                .inflate(R.layout.pdf_list_item, parent, false);
+                .inflate(R.layout.device_set_list_item, parent, false);
 
         return new ViewHolder(v);
     }
 
     @Override
     public void onBindViewHolder(ViewHolder holder, int position) {
-        holder.mTextView.setText(getItem(position));
+        holder.mTextView.setText(getItemTitle(position));
     }
 
-    public String getItem(int position) {
-        return mPdfFileList.getItem(position).getTitle();
+    public String getItemTitle(int position) {
+        DeviceSet ds = mDeviceSets.getItem(position);
+        File file = mDB.getFileById(ds.getFileId());
+
+        if (file != null) {
+            return file.getTitle();
+        } else {
+            return "*** Error retrieving the file name";
+        }
     }
 
     @Override
     public int getItemCount() {
-        return mPdfFileList.getItemCount();
+        return mDeviceSets.getItemCount();
     }
 
-    public void setOnPdfFileClickListener(OnPdfFileClickListener clickListener) {
+    public void setOnDeviceSetClickListener(OnDeviceSetClickListener clickListener) {
         mClickListener = clickListener;
     }
 
     public void stop() {
-        mPdfFileList.discard();
-        mPdfFileList = null;
+        mDeviceSets.discard();
+        mDeviceSets = null;
     }
 
     /**
      * Interface used for handling click events of the pdf files in the list.
      */
-    public interface OnPdfFileClickListener {
-        void onPdfFileClick(PdfListAdapter adapter, View v, int position);
+    public interface OnDeviceSetClickListener {
+        void onDeviceSetClick(DeviceSetListAdapter adapter, View v, int position);
     }
 
 }

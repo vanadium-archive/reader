@@ -9,6 +9,7 @@ import android.content.Context;
 import android.content.Intent;
 
 import io.v.android.apps.reader.model.Listener;
+import io.v.android.apps.reader.vdl.DeviceSet;
 import io.v.android.apps.reader.vdl.File;
 
 /**
@@ -87,5 +88,18 @@ public interface DB {
      * @return a list of PDF files.
      */
     DBList<File> getFileList();
+
+    /**
+     * Gets the list of currently active device sets.
+     * @return a list of device sets.
+     */
+    DBList<DeviceSet> getDeviceSetList();
+
+    /**
+     * Gets the PDF file with the given id.
+     * @param id the id of the file
+     * @return the file object, or null if there is no file with the given id.
+     */
+    File getFileById(String id);
 
 }

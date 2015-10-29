@@ -14,6 +14,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 
 import io.v.android.apps.reader.model.Listener;
+import io.v.android.apps.reader.vdl.DeviceSet;
 import io.v.android.apps.reader.vdl.File;
 import io.v.android.libs.security.BlessingsManager;
 import io.v.android.v23.V;
@@ -187,14 +188,14 @@ public class SyncbaseDB implements DB {
     }
 
     // TODO(youngseokyoon): Remove once the list is implemented properly.
-    private static class EmptyFileList implements DBList<File> {
+    private static class EmptyList<E> implements DBList<E> {
         @Override
         public int getItemCount() {
             return 0;
         }
 
         @Override
-        public File getItem(int position) {
+        public E getItem(int position) {
             return null;
         }
 
@@ -209,7 +210,17 @@ public class SyncbaseDB implements DB {
 
     @Override
     public DBList<File> getFileList() {
-        return new EmptyFileList();
+        return new EmptyList<File>();
+    }
+
+    @Override
+    public DBList<DeviceSet> getDeviceSetList() {
+        return new EmptyList<DeviceSet>();
+    }
+
+    @Override
+    public File getFileById(String id) {
+        return null;
     }
 
     private void handleError(String msg) {
