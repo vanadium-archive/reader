@@ -14,6 +14,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 
 import io.v.android.apps.reader.model.Listener;
+import io.v.android.apps.reader.vdl.Device;
 import io.v.android.apps.reader.vdl.DeviceSet;
 import io.v.android.apps.reader.vdl.File;
 import io.v.android.libs.security.BlessingsManager;
@@ -52,12 +53,18 @@ public class SyncbaseDB implements DB {
     private static final int BLESSING_REQUEST = 200;
     private static final String SYNCBASE_APP = "reader";
     private static final String SYNCBASE_DB = "db";
+
     private static final String FILES_TABLE = "files";
+    private static final String DEVICES_TABLE = "devices";
+    private static final String DEVICE_SETS_TABLE = "deviceSets";
 
     private Permissions mPermissions;
     private Context mContext;
     private VContext vContext;
+
     private Table mFiles;
+    private Table mDevices;
+    private Table mDeviceSets;
 
     SyncbaseDB(Context context) {
         mContext = context;
@@ -182,6 +189,16 @@ public class SyncbaseDB implements DB {
             if (!mFiles.exists(vContext)) {
                 mFiles.create(vContext, mPermissions);
             }
+
+            mDevices = db.getTable(DEVICES_TABLE);
+            if (!mDevices.exists(vContext)) {
+                mDevices.create(vContext, mPermissions);
+            }
+
+            mDeviceSets = db.getTable(DEVICE_SETS_TABLE);
+            if (!mDeviceSets.exists(vContext)) {
+                mDeviceSets.create(vContext, mPermissions);
+            }
         } catch (VException e) {
             handleError("Couldn't setup syncbase service: " + e.getMessage());
         }
@@ -211,6 +228,11 @@ public class SyncbaseDB implements DB {
     @Override
     public DBList<File> getFileList() {
         return new EmptyList<File>();
+    }
+
+    @Override
+    public DBList<Device> getDeviceList() {
+        return new EmptyList<Device>();
     }
 
     @Override

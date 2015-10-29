@@ -9,6 +9,7 @@ import android.content.Context;
 import android.content.Intent;
 
 import io.v.android.apps.reader.model.Listener;
+import io.v.android.apps.reader.vdl.Device;
 import io.v.android.apps.reader.vdl.DeviceSet;
 import io.v.android.apps.reader.vdl.File;
 
@@ -88,6 +89,12 @@ public interface DB {
      * @return a list of PDF files.
      */
     DBList<File> getFileList();
+
+    /**
+     * Gets the list of devices of this user.
+     * @return a list of devices.
+     */
+    DBList<Device> getDeviceList();
 
     /**
      * Gets the list of currently active device sets.

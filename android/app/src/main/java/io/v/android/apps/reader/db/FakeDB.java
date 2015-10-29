@@ -7,11 +7,14 @@ package io.v.android.apps.reader.db;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
+import android.util.Log;
 
 import java.util.ArrayList;
 import java.util.List;
 
+import io.v.android.apps.reader.model.DeviceInfoFactory;
 import io.v.android.apps.reader.model.Listener;
+import io.v.android.apps.reader.vdl.Device;
 import io.v.android.apps.reader.vdl.DeviceSet;
 import io.v.android.apps.reader.vdl.File;
 
@@ -31,17 +34,37 @@ public class FakeDB implements DB {
     };
 
     private FakeFileList mFileList;
+    private FakeDeviceList mDeviceList;
     private FakeDeviceSetList mDeviceSetList;
 
     public FakeDB(Context context) {
         mFileList = new FakeFileList();
+        mDeviceList = new FakeDeviceList(context);
         mDeviceSetList = new FakeDeviceSetList();
     }
 
-    static class FakeFileList implements DBList<File> {
+    static abstract class BaseFakeList<E> implements DBList<E> {
+
+        private Listener mListener;
+
+        @Override
+        public void setListener(Listener listener) {
+            // This fake list never calls the notify methods.
+            // Just check if the listener is set only once.
+            assert mListener == null;
+            mListener = listener;
+        }
+
+        @Override
+        public void discard() {
+            // Nothing to do.
+        }
+
+    }
+
+    static class FakeFileList extends BaseFakeList<File> {
 
         private List<File> mFiles;
-        private Listener mListener;
 
         public FakeFileList() {
             mFiles = new ArrayList<>();
@@ -69,25 +92,33 @@ public class FakeDB implements DB {
         public File getItem(int position) {
             return mFiles.get(position);
         }
+    }
 
-        @Override
-        public void setListener(Listener listener) {
-            // This fake list never calls the notify methods.
-            // Just check if the listener is set only once.
-            assert mListener == null;
-            mListener = listener;
+    static class FakeDeviceList extends BaseFakeList<Device> {
+
+        private static final String TAG = FakeDeviceList.class.getSimpleName();
+
+        private Context mContext;
+
+        public FakeDeviceList(Context context) {
+            mContext = context;
+            Log.i(TAG, "Device Info: " + getItem(0));
         }
 
         @Override
-        public void discard() {
-            // Nothing to do.
+        public int getItemCount() {
+            return 1;
+        }
+
+        @Override
+        public Device getItem(int position) {
+            return DeviceInfoFactory.get(mContext);
         }
     }
 
-    static class FakeDeviceSetList implements DBList<DeviceSet> {
+    static class FakeDeviceSetList extends BaseFakeList<DeviceSet> {
 
         private List<DeviceSet> mDeviceSets;
-        private Listener mListener;
 
         public FakeDeviceSetList() {
             mDeviceSets = new ArrayList<>();
@@ -113,19 +144,6 @@ public class FakeDB implements DB {
         public DeviceSet getItem(int position) {
             return mDeviceSets.get(position);
         }
-
-        @Override
-        public void setListener(Listener listener) {
-            // This fake list never calls the notify methods.
-            // Just check if the listener is set only once.
-            assert mListener == null;
-            mListener = listener;
-        }
-
-        @Override
-        public void discard() {
-            // Nothing to do.
-        }
     }
 
     public void init(Activity activity) {
@@ -141,6 +159,11 @@ public class FakeDB implements DB {
     @Override
     public DBList<File> getFileList() {
         return mFileList;
+    }
+
+    @Override
+    public DBList<Device> getDeviceList() {
+        return mDeviceList;
     }
 
     @Override

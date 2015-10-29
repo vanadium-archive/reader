@@ -11,6 +11,7 @@ type Screen struct {
 
 type Device struct {
   Id string
+  DeviceType string
   Name string
   Arch string
   Screen Screen
