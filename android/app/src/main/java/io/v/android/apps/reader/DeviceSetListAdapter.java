@@ -26,16 +26,19 @@ public class DeviceSetListAdapter extends RecyclerView.Adapter<DeviceSetListAdap
 
     private OnDeviceSetClickListener mClickListener;
     private DB mDB;
+    private DBList<File> mFiles;
     private DBList<DeviceSet> mDeviceSets;
 
     public class ViewHolder extends RecyclerView.ViewHolder {
         public CardView mCardView;
-        public TextView mTextView;
+        public TextView mTextViewTitle;
+        public TextView mTextViewId;
 
         public ViewHolder(CardView v) {
             super(v);
             mCardView = v;
-            mTextView = (TextView) mCardView.findViewById(R.id.device_set_list_item_text);
+            mTextViewTitle = (TextView) mCardView.findViewById(R.id.device_set_list_item_title);
+            mTextViewId = (TextView) mCardView.findViewById(R.id.device_set_list_item_id);
 
             mCardView.setOnClickListener(new View.OnClickListener() {
                 @Override
@@ -52,6 +55,7 @@ public class DeviceSetListAdapter extends RecyclerView.Adapter<DeviceSetListAdap
         mClickListener = null;
 
         mDB = DB.Singleton.get(context);
+        mFiles = mDB.getFileList();
         mDeviceSets = mDB.getDeviceSetList();
         mDeviceSets.setListener(this);
     }
@@ -67,17 +71,23 @@ public class DeviceSetListAdapter extends RecyclerView.Adapter<DeviceSetListAdap
 
     @Override
     public void onBindViewHolder(ViewHolder holder, int position) {
-        holder.mTextView.setText(getItemTitle(position));
+        DeviceSet ds = mDeviceSets.getItem(position);
+
+        holder.mTextViewTitle.setText("Title: " + getItemTitle(ds));
+        holder.mTextViewId.setText("Id: " + ds.getId());
     }
 
     public String getItemTitle(int position) {
-        DeviceSet ds = mDeviceSets.getItem(position);
-        File file = mDB.getFileById(ds.getFileId());
+        return getItemTitle(mDeviceSets.getItem(position));
+    }
+
+    public String getItemTitle(DeviceSet ds) {
+        File file = mFiles.getItemById(ds.getFileId());
 
         if (file != null) {
             return file.getTitle();
         } else {
-            return "*** Error retrieving the file name";
+            return "*** Error retrieving the title";
         }
     }
 
@@ -91,6 +101,8 @@ public class DeviceSetListAdapter extends RecyclerView.Adapter<DeviceSetListAdap
     }
 
     public void stop() {
+        mFiles.discard();
+        mFiles = null;
         mDeviceSets.discard();
         mDeviceSets = null;
     }

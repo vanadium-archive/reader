@@ -12,8 +12,15 @@ import android.support.v7.widget.RecyclerView;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.Button;
+
+import com.google.common.collect.ImmutableMap;
+
+import java.util.UUID;
 
 import io.v.android.apps.reader.db.DB;
+import io.v.android.apps.reader.vdl.DeviceMeta;
+import io.v.android.apps.reader.vdl.DeviceSet;
 
 /**
  * Activity that displays all the active device sets of this user.
@@ -25,6 +32,7 @@ public class DeviceSetChooserActivity extends Activity {
 
     private RecyclerView mRecyclerView;
     private DeviceSetListAdapter mAdapter;
+    private Button mButtonAddDeviceSet;
     private DB mDB;
 
     protected void onCreate(Bundle savedInstanceState) {
@@ -42,6 +50,20 @@ public class DeviceSetChooserActivity extends Activity {
         // Use the linear layout manager for the recycler view
         RecyclerView.LayoutManager layoutManager= new LinearLayoutManager(this);
         mRecyclerView.setLayoutManager(layoutManager);
+
+        mButtonAddDeviceSet = (Button) findViewById(R.id.button_add_device_set);
+        mButtonAddDeviceSet.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                // Create a new device set and add it to the database.
+                DeviceSet ds = new DeviceSet(
+                        UUID.randomUUID().toString(),              // Device Set ID
+                        UUID.randomUUID().toString(),              // File ID
+                        ImmutableMap.<String, DeviceMeta>of());
+
+                mDB.addDeviceSet(ds);
+            }
+        });
     }
 
     @Override

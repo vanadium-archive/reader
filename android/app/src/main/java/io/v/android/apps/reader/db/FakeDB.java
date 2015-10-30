@@ -45,12 +45,10 @@ public class FakeDB implements DB {
 
     static abstract class BaseFakeList<E> implements DBList<E> {
 
-        private Listener mListener;
+        protected Listener mListener;
 
         @Override
         public void setListener(Listener listener) {
-            // This fake list never calls the notify methods.
-            // Just check if the listener is set only once.
             assert mListener == null;
             mListener = listener;
         }
@@ -92,6 +90,17 @@ public class FakeDB implements DB {
         public File getItem(int position) {
             return mFiles.get(position);
         }
+
+        @Override
+        public File getItemById(String id) {
+            for (File file : mFiles) {
+                if (file.getId().equals(id)) {
+                    return file;
+                }
+            }
+
+            return null;
+        }
     }
 
     static class FakeDeviceList extends BaseFakeList<Device> {
@@ -113,6 +122,16 @@ public class FakeDB implements DB {
         @Override
         public Device getItem(int position) {
             return DeviceInfoFactory.get(mContext);
+        }
+
+        @Override
+        public Device getItemById(String id) {
+            Device device = DeviceInfoFactory.get(mContext);
+            if (device.getId().equals(id)) {
+                return device;
+            }
+
+            return null;
         }
     }
 
@@ -144,6 +163,24 @@ public class FakeDB implements DB {
         public DeviceSet getItem(int position) {
             return mDeviceSets.get(position);
         }
+
+        @Override
+        public DeviceSet getItemById(String id) {
+            for (DeviceSet ds : mDeviceSets) {
+                if (ds.getId().equals(id)) {
+                    return ds;
+                }
+            }
+
+            return null;
+        }
+
+        public void addItem(DeviceSet ds) {
+            mDeviceSets.add(ds);
+            if (mListener != null) {
+                mListener.notifyItemInserted(mDeviceSets.size() - 1);
+            }
+        }
     }
 
     public void init(Activity activity) {
@@ -172,15 +209,7 @@ public class FakeDB implements DB {
     }
 
     @Override
-    public File getFileById(String id) {
-        for (int i = 0; i < mFileList.getItemCount(); ++i) {
-            File file = mFileList.getItem(i);
-            if (file.getId().equals(id)) {
-                return file;
-            }
-        }
-
-        return null;
+    public void addDeviceSet(DeviceSet ds) {
+        mDeviceSetList.addItem(ds);
     }
-
 }

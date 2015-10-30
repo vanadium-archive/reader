@@ -30,8 +30,8 @@ public interface DB {
                     result = instance;
                     if (result == null) {
                         // uncomment either one
-                        instance = result = new FakeDB(context);
-//                        instance = result = new SyncbaseDB(context);
+//                        instance = result = new FakeDB(context);
+                        instance = result = new SyncbaseDB(context);
                     }
                 }
             }
@@ -72,6 +72,11 @@ public interface DB {
         E getItem(int position);
 
         /**
+         * Returns the element with the given id.
+         */
+        E getItemById(String id);
+
+        /**
          * Sets the listener for changes to the list.
          * There can only be one listener.
          */
@@ -103,10 +108,9 @@ public interface DB {
     DBList<DeviceSet> getDeviceSetList();
 
     /**
-     * Gets the PDF file with the given id.
-     * @param id the id of the file
-     * @return the file object, or null if there is no file with the given id.
+     * Adds a new device set to the db.
+     * @param ds the device set to be added.
      */
-    File getFileById(String id);
+    void addDeviceSet(DeviceSet ds);
 
 }
