@@ -44,7 +44,8 @@ public class DeviceSetListAdapter extends RecyclerView.Adapter<DeviceSetListAdap
                 @Override
                 public void onClick(View v) {
                     if (mClickListener != null) {
-                        mClickListener.onDeviceSetClick(DeviceSetListAdapter.this, v, getPosition());
+                        mClickListener.onDeviceSetClick(
+                                DeviceSetListAdapter.this, v, getLayoutPosition());
                     }
                 }
             });
@@ -75,6 +76,10 @@ public class DeviceSetListAdapter extends RecyclerView.Adapter<DeviceSetListAdap
 
         holder.mTextViewTitle.setText("Title: " + getItemTitle(ds));
         holder.mTextViewId.setText("Id: " + ds.getId());
+    }
+
+    public String getDeviceSetId(int position) {
+        return mDeviceSets.getItem(position).getId();
     }
 
     public String getItemTitle(int position) {

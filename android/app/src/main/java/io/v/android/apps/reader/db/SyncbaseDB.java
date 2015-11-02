@@ -445,6 +445,15 @@ public class SyncbaseDB implements DB {
         }
     }
 
+    @Override
+    public void deleteDeviceSet(String id) {
+        try {
+            mLocalSB.deviceSets.delete(mVContext, id);
+        } catch (VException e) {
+            handleError("Failed to delete the device set with id " + id + ": " + e.getMessage());
+        }
+    }
+
     private void handleError(String msg) {
         Log.e(TAG, msg);
         Toast.makeText(mContext, msg, Toast.LENGTH_LONG).show();

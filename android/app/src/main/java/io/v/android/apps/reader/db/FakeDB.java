@@ -181,6 +181,15 @@ public class FakeDB implements DB {
                 mListener.notifyItemInserted(mDeviceSets.size() - 1);
             }
         }
+
+        public void removeItemById(String id) {
+            for (int i = 0; i < mDeviceSets.size(); ++i) {
+                if (mDeviceSets.get(i).getId().equals(id)) {
+                    mDeviceSets.remove(i);
+                    return;
+                }
+            }
+        }
     }
 
     public void init(Activity activity) {
@@ -211,5 +220,10 @@ public class FakeDB implements DB {
     @Override
     public void addDeviceSet(DeviceSet ds) {
         mDeviceSetList.addItem(ds);
+    }
+
+    @Override
+    public void deleteDeviceSet(String id) {
+        mDeviceSetList.removeItemById(id);
     }
 }

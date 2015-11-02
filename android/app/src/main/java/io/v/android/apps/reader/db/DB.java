@@ -91,26 +91,37 @@ public interface DB {
 
     /**
      * Gets the list of available PDF files.
+     *
      * @return a list of PDF files.
      */
     DBList<File> getFileList();
 
     /**
      * Gets the list of devices of this user.
+     *
      * @return a list of devices.
      */
     DBList<Device> getDeviceList();
 
     /**
      * Gets the list of currently active device sets.
+     *
      * @return a list of device sets.
      */
     DBList<DeviceSet> getDeviceSetList();
 
     /**
      * Adds a new device set to the db.
+     *
      * @param ds the device set to be added.
      */
     void addDeviceSet(DeviceSet ds);
+
+    /**
+     * Deletes a device set with the given id.
+     *
+     * @param id the id of the device set.
+     */
+    void deleteDeviceSet(String id);
 
 }

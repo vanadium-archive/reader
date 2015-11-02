@@ -9,6 +9,7 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
+import android.support.v7.widget.helper.ItemTouchHelper;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -24,7 +25,7 @@ import io.v.android.apps.reader.vdl.DeviceSet;
 
 /**
  * Activity that displays all the active device sets of this user.
- *
+ * <p/>
  * When the user clicks on one of the device sets, it starts the PdfViewerActivity with the file
  * associated with the device set.
  */
@@ -48,9 +49,10 @@ public class DeviceSetChooserActivity extends Activity {
         mRecyclerView.setHasFixedSize(true);
 
         // Use the linear layout manager for the recycler view
-        RecyclerView.LayoutManager layoutManager= new LinearLayoutManager(this);
+        RecyclerView.LayoutManager layoutManager = new LinearLayoutManager(this);
         mRecyclerView.setLayoutManager(layoutManager);
 
+        // "Add Device Set" button initialization
         mButtonAddDeviceSet = (Button) findViewById(R.id.button_add_device_set);
         mButtonAddDeviceSet.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -85,6 +87,27 @@ public class DeviceSetChooserActivity extends Activity {
         });
 
         mRecyclerView.setAdapter(mAdapter);
+
+        // ItemTouchHelper for handling the swipe action.
+        ItemTouchHelper.SimpleCallback touchCallback;
+        touchCallback = new ItemTouchHelper.SimpleCallback(0, ItemTouchHelper.LEFT) {
+            @Override
+            public boolean onMove(RecyclerView recyclerView,
+                                  RecyclerView.ViewHolder viewHolder,
+                                  RecyclerView.ViewHolder target) {
+                return false;
+            }
+
+            @Override
+            public void onSwiped(RecyclerView.ViewHolder viewHolder, int direction) {
+                // Delete the device set on left swipe.
+                if (direction == ItemTouchHelper.LEFT) {
+                    mDB.deleteDeviceSet(
+                            mAdapter.getDeviceSetId(viewHolder.getLayoutPosition()));
+                }
+            }
+        };
+        new ItemTouchHelper(touchCallback).attachToRecyclerView(mRecyclerView);
     }
 
     @Override
