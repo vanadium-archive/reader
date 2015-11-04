@@ -26,10 +26,10 @@ public class DeviceInfoFactory {
     /**
      * Singleton method for getting the Device object that represents this device.
      *
-     * @param context Android context
+     * @param context Android context.
      * @return Device object representing this device.
      */
-    public static Device get(Context context) {
+    public static Device getDevice(Context context) {
         Device result = instance;
         if (instance == null) {
             synchronized (DeviceInfoFactory.class) {
@@ -52,6 +52,16 @@ public class DeviceInfoFactory {
         }
 
         return result;
+    }
+
+    /**
+     * Convenient helper method for getting the only device id part of the device object.
+     *
+     * @param context Android context.
+     * @return device id.
+     */
+    public static String getDeviceId(Context context) {
+        return getDevice(context).getId();
     }
 
     /**

@@ -8,4 +8,6 @@
 
     <dimen name="device_set_list_item_horizontal_margin">16dp</dimen>
     <dimen name="device_set_list_item_vertical_margin">16dp</dimen>
+
+    <dimen name="fab_margin">16dp</dimen>
 </resources>

@@ -187,7 +187,7 @@ public class SyncbaseDB implements DB {
                 "users",
                 mUsername,
                 "reader",
-                DeviceInfoFactory.get(mContext).getId(),
+                DeviceInfoFactory.getDevice(mContext).getId(),
                 "syncbase"
         );
         Log.i(TAG, "SyncbaseName: " + syncbaseName);
@@ -322,7 +322,7 @@ public class SyncbaseDB implements DB {
 
     private void registerDevice() {
         try {
-            Device thisDevice = DeviceInfoFactory.get(mContext);
+            Device thisDevice = DeviceInfoFactory.getDevice(mContext);
             mLocalSB.devices.put(mVContext, thisDevice.getId(), thisDevice, Device.class);
             Log.i(TAG, "Registered this device to the syncbase table: " + thisDevice);
         } catch (VException e) {
@@ -437,11 +437,38 @@ public class SyncbaseDB implements DB {
     }
 
     @Override
+    public void addFile(File file) {
+        try {
+            mLocalSB.files.put(mVContext, file.getId(), file, File.class);
+        } catch (VException e) {
+            handleError("Failed to add the file(" + file + "): " + e.getMessage());
+        }
+    }
+
+    @Override
+    public void deleteFile(String id) {
+        try {
+            mLocalSB.files.delete(mVContext, id);
+        } catch (VException e) {
+            handleError("Failed to delete the file with id " + id + ": " + e.getMessage());
+        }
+    }
+
+    @Override
     public void addDeviceSet(DeviceSet ds) {
         try {
             mLocalSB.deviceSets.put(mVContext, ds.getId(), ds, DeviceSet.class);
         } catch (VException e) {
             handleError("Failed to add the device set(" + ds + "): " + e.getMessage());
+        }
+    }
+
+    @Override
+    public void updateDeviceSet(DeviceSet ds) {
+        try {
+            mLocalSB.deviceSets.put(mVContext, ds.getId(), ds, DeviceSet.class);
+        } catch (VException e) {
+            handleError("Failed to update the device set(" + ds + "): " + e.getMessage());
         }
     }
 

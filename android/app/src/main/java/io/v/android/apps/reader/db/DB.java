@@ -111,11 +111,32 @@ public interface DB {
     DBList<DeviceSet> getDeviceSetList();
 
     /**
+     * Adds a new file to the db.
+     *
+     * @param file the file to be added.
+     */
+    void addFile(File file);
+
+    /**
+     * Deletes a file with the given id.
+     *
+     * @param id the id of the file.
+     */
+    void deleteFile(String id);
+
+    /**
      * Adds a new device set to the db.
      *
      * @param ds the device set to be added.
      */
     void addDeviceSet(DeviceSet ds);
+
+    /**
+     * Updates a device set in the db.
+     *
+     * @param ds the device set to be updated.
+     */
+    void updateDeviceSet(DeviceSet ds);
 
     /**
      * Deletes a device set with the given id.

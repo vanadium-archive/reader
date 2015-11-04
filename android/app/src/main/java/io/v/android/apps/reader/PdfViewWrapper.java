@@ -21,27 +21,12 @@ public class PdfViewWrapper extends PDFView {
     }
 
     /**
-     * Move to the previous page, if the current page is not the first page.
+     * Jumps to the given page number. Page number is one-based.
+     *
+     * @param page the page number to jump to. Page number is one-based.
      */
-    public void prevPage() {
-        // NOTE: getCurrentPage() returns a zero-based page number,
-        //       whereas the jumpTo() method expects a one-based page number.
-        int page = getCurrentPage();
-        if (page > 0) {
-            jumpTo(page);
-        }
-    }
-
-    /**
-     * Move to the next page, if the current page is not the last page.
-     */
-    public void nextPage() {
-        // NOTE: getCurrentPage() returns a zero-based page number,
-        //       whereas the jumpTo() method expects a one-based page number.
-        int page = getCurrentPage();
-        if (page < getPageCount() - 1) {
-            jumpTo(page + 2);
-        }
+    public void setPage(int page) {
+        jumpTo(page);
     }
 
 }

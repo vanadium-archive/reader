@@ -6,22 +6,18 @@ package io.v.android.apps.reader;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
+import android.support.design.widget.FloatingActionButton;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.helper.ItemTouchHelper;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.widget.Button;
-
-import com.google.common.collect.ImmutableMap;
-
-import java.util.UUID;
 
 import io.v.android.apps.reader.db.DB;
-import io.v.android.apps.reader.vdl.DeviceMeta;
-import io.v.android.apps.reader.vdl.DeviceSet;
 
 /**
  * Activity that displays all the active device sets of this user.
@@ -31,9 +27,13 @@ import io.v.android.apps.reader.vdl.DeviceSet;
  */
 public class DeviceSetChooserActivity extends Activity {
 
+    private static final String TAG = DeviceSetChooserActivity.class.getSimpleName();
+
+    private static final int CHOOSE_PDF_FILE_REQUEST = 300;
+
     private RecyclerView mRecyclerView;
     private DeviceSetListAdapter mAdapter;
-    private Button mButtonAddDeviceSet;
+    private FloatingActionButton mButtonAddDeviceSet;
     private DB mDB;
 
     protected void onCreate(Bundle savedInstanceState) {
@@ -52,18 +52,16 @@ public class DeviceSetChooserActivity extends Activity {
         RecyclerView.LayoutManager layoutManager = new LinearLayoutManager(this);
         mRecyclerView.setLayoutManager(layoutManager);
 
-        // "Add Device Set" button initialization
-        mButtonAddDeviceSet = (Button) findViewById(R.id.button_add_device_set);
+        // Add device set FAB initialization
+        mButtonAddDeviceSet = (FloatingActionButton) findViewById(R.id.button_add_device_set);
         mButtonAddDeviceSet.setOnClickListener(new View.OnClickListener() {
             @Override
-            public void onClick(View v) {
-                // Create a new device set and add it to the database.
-                DeviceSet ds = new DeviceSet(
-                        UUID.randomUUID().toString(),              // Device Set ID
-                        UUID.randomUUID().toString(),              // File ID
-                        ImmutableMap.<String, DeviceMeta>of());
-
-                mDB.addDeviceSet(ds);
+            public void onClick(View view) {
+                Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+                intent.setType(Constants.PDF_MIME_TYPE);
+                if (intent.resolveActivity(getPackageManager()) != null) {
+                    startActivityForResult(intent, CHOOSE_PDF_FILE_REQUEST);
+                }
             }
         });
     }
@@ -81,7 +79,7 @@ public class DeviceSetChooserActivity extends Activity {
             public void onDeviceSetClick(DeviceSetListAdapter adapter, View v, int position) {
                 Intent intent = PdfViewerActivity.createIntent(
                         getApplicationContext(),
-                        adapter.getItemTitle(position));
+                        adapter.getDeviceSetId(position));
                 startActivity(intent);
             }
         });
@@ -145,9 +143,25 @@ public class DeviceSetChooserActivity extends Activity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+
+        Log.i(TAG, String.format("onActivityResult(%d, %d, data) called", requestCode, resultCode));
         if (mDB.onActivityResult(requestCode, resultCode, data)) {
             return;
         }
+
         // Any other activity results would be handled here.
+        if (requestCode == CHOOSE_PDF_FILE_REQUEST) {
+            if (resultCode == RESULT_OK) {
+                Uri fullPdfUri = data.getData();
+                Log.i(TAG, "Uri of the provided PDF: " + fullPdfUri);
+
+                Intent intent = PdfViewerActivity.createIntent(this, fullPdfUri);
+                startActivity(intent);
+            }
+        } else {
+            Log.w(TAG, String.format(
+                    "Unhandled activity result. (requestCode: %d, resultCode: %d)",
+                    requestCode, resultCode));
+        }
     }
 }

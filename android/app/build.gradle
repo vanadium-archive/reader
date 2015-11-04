@@ -70,8 +70,10 @@ android {
 
 dependencies {
     compile fileTree(dir: 'libs', include: ['*.jar'])
-    compile 'com.android.support:cardview-v7:22+'
-    compile 'com.android.support:recyclerview-v7:22+'
+    compile 'com.android.support:design:22.2.1'
+    compile 'com.android.support:appcompat-v7:22.2.1'
+    compile 'com.android.support:cardview-v7:22.2.1'
+    compile 'com.android.support:recyclerview-v7:22.2.1'
     compile 'com.joanzapata.pdfview:android-pdfview:1.0.4@aar'
     compile project(':android-lib')
 }
