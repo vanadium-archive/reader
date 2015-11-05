@@ -67,7 +67,7 @@ dependencies {
 }
 
 vdl {
-    inputPaths += '../go/src'
-    inputPaths += '../projects/build'
+    inputPaths += System.getenv("JIRI_ROOT") + '/release/go/src'
+    inputPaths += '../..'
     packageTranslations += 'vdl->io.v.android.apps.reader.vdl'
 }
