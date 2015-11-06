@@ -56,6 +56,16 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
+    // Vanadium android-lib only supports armeabi-v7a.
+    // The following block prevents this app from running in arm64-v8a mode.
+    splits {
+        abi {
+            enable true
+            reset()
+            include 'armeabi-v7a'
+            universalApk false
+        }
+    }
 }
 
 dependencies {
