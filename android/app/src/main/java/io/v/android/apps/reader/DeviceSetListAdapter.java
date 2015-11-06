@@ -12,9 +12,15 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
+import com.google.common.base.Joiner;
+
+import java.util.ArrayList;
+import java.util.List;
+
 import io.v.android.apps.reader.db.DB;
 import io.v.android.apps.reader.db.DB.DBList;
 import io.v.android.apps.reader.model.Listener;
+import io.v.android.apps.reader.vdl.Device;
 import io.v.android.apps.reader.vdl.DeviceSet;
 import io.v.android.apps.reader.vdl.File;
 
@@ -27,18 +33,21 @@ public class DeviceSetListAdapter extends RecyclerView.Adapter<DeviceSetListAdap
     private OnDeviceSetClickListener mClickListener;
     private DB mDB;
     private DBList<File> mFiles;
+    private DBList<Device> mDevices;
     private DBList<DeviceSet> mDeviceSets;
 
     public class ViewHolder extends RecyclerView.ViewHolder {
         public CardView mCardView;
         public TextView mTextViewTitle;
         public TextView mTextViewId;
+        public TextView mTextViewDevices;
 
         public ViewHolder(CardView v) {
             super(v);
             mCardView = v;
             mTextViewTitle = (TextView) mCardView.findViewById(R.id.device_set_list_item_title);
             mTextViewId = (TextView) mCardView.findViewById(R.id.device_set_list_item_id);
+            mTextViewDevices = (TextView) mCardView.findViewById(R.id.device_set_list_item_devices);
 
             mCardView.setOnClickListener(new View.OnClickListener() {
                 @Override
@@ -57,6 +66,7 @@ public class DeviceSetListAdapter extends RecyclerView.Adapter<DeviceSetListAdap
 
         mDB = DB.Singleton.get(context);
         mFiles = mDB.getFileList();
+        mDevices = mDB.getDeviceList();
         mDeviceSets = mDB.getDeviceSetList();
         mDeviceSets.setListener(this);
     }
@@ -76,6 +86,14 @@ public class DeviceSetListAdapter extends RecyclerView.Adapter<DeviceSetListAdap
 
         holder.mTextViewTitle.setText("Title: " + getItemTitle(ds));
         holder.mTextViewId.setText("Id: " + ds.getId());
+
+        // Devices info
+        List<String> deviceNames = new ArrayList<>();
+        for (String deviceId : ds.getDevices().keySet()) {
+            Device device = mDevices.getItemById(deviceId);
+            deviceNames.add(device != null ? device.getName() : "Unknown Device");
+        }
+        holder.mTextViewDevices.setText("Devices: " + Joiner.on(", ").join(deviceNames));
     }
 
     public String getDeviceSetId(int position) {
