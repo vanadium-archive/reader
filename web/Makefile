@@ -3,7 +3,7 @@ PATH := node_modules/.bin:$(PATH)
 NODE_DIR := $(shell jiri v23-profile list --info Target.InstallationDir nodejs)
 PATH := $(PATH):$(NODE_DIR)/bin
 SHELL := /bin/bash
-VDLPATH := $(JIRI_ROOT)/release/go/src:$(shell cd ..; pwd)
+VDLPATH := $(JIRI_ROOT)/release/go/src:$(shell cd ../common; pwd)
 
 .SHELLFLAGS := -eu -o pipefail -c
 .DEFAULT_GOAL := all
@@ -11,7 +11,7 @@ VDLPATH := $(JIRI_ROOT)/release/go/src:$(shell cd ..; pwd)
 
 js_files := $(shell find browser -name "*.js")
 css_files := $(shell find browser -name "*.css")
-vdl_files := $(wildcard ../vdl/*.vdl)
+vdl_files := $(wildcard ../common/vdl/*.vdl)
 
 host ?= 127.0.0.1
 port ?= 8080
