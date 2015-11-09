@@ -97,17 +97,19 @@ public class SyncbaseDB implements DB {
 
     @Override
     public void init(Activity activity) {
-        if (mVContext != null) {
+        if (isInitialized()) {
             // Already initialized.
             return;
         }
 
-        mVContext = V.init(mContext);
-        try {
-            mVContext = V.withListenSpec(
-                    mVContext, V.getListenSpec(mVContext).withProxy("proxy"));
-        } catch (VException e) {
-            handleError("Couldn't setup vanadium proxy: " + e.getMessage());
+        if (mVContext == null) {
+            mVContext = V.init(mContext);
+            try {
+                mVContext = V.withListenSpec(
+                        mVContext, V.getListenSpec(mVContext).withProxy("proxy"));
+            } catch (VException e) {
+                handleError("Couldn't setup vanadium proxy: " + e.getMessage());
+            }
         }
 
         AccessList acl = new AccessList(
@@ -119,6 +121,11 @@ public class SyncbaseDB implements DB {
                 Constants.RESOLVE.getValue(), acl,
                 Constants.DEBUG.getValue(), acl));
         getBlessings(activity);
+    }
+
+    @Override
+    public boolean isInitialized() {
+        return mInitialized;
     }
 
     private void getBlessings(Activity activity) {

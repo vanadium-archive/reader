@@ -98,6 +98,14 @@ public class PdfViewerActivity extends Activity {
     protected void onStart() {
         super.onStart();
 
+        /**
+         * Suppress the start process until the DB initialization is completed.
+         * onStart() method will be called again after the user selects her blessings.
+         */
+        if (!mDB.isInitialized()) {
+            return;
+        }
+
         mDeviceSets = mDB.getDeviceSetList();
         mDeviceSets.setListener(new Listener() {
             @Override
@@ -134,6 +142,7 @@ public class PdfViewerActivity extends Activity {
              * The EXTRA_DEVICE_SET_ID value is set when this activity is started by touching one of
              * the existing device sets from the DeviceSetChooserActivity.
              */
+            Log.i(TAG, "onStart: Case #1: started by selecting an existing device set.");
 
             // Get the device set from the DB and join it.
             DeviceSet ds = mDeviceSets.getItemById(intent.getStringExtra(EXTRA_DEVICE_SET_ID));
@@ -145,24 +154,41 @@ public class PdfViewerActivity extends Activity {
              * the floating action button from the DeviceSetChooserActivity and selecting one of the
              * local PDF files from the browser.
              */
-            // Get the file content.
-            java.io.File jFile = getFileFromUri(intent.getData());
-            if (jFile == null) {
-                Log.e(TAG, "Could not get the file content of Uri: " + intent.getData().toString());
-                return;
-            }
+            Log.i(TAG, "onStart: Case #2: started by using the floating action button.");
 
-            // Create a vdl File object representing this pdf file and put it in the db.
-            File vFile = createVdlFile(jFile, intent.getData());
-            mDB.addFile(vFile);
+            Uri uri = intent.getData();
+            createAndJoinDeviceSet(uri);
+        } else if (intent.hasExtra(Intent.EXTRA_STREAM)) {
+            /**
+             * Case #3.
+             * The EXTRA_STREAM value is set when this activity is started by receiving an implicit
+             * intent from another app by sharing a PDF file to the reader app.
+             */
+            Log.i(TAG, "onStart: Case #3: started by an implicit intent from another app.");
 
-            // Create a device set object and put it in the db.
-            DeviceSet ds = createDeviceSet(vFile);
-            mDB.addDeviceSet(ds);
-
-            // Join the device set.
-            joinDeviceSet(ds);
+            Uri uri = intent.getParcelableExtra(Intent.EXTRA_STREAM);
+            createAndJoinDeviceSet(uri);
         }
+    }
+
+    private void createAndJoinDeviceSet(Uri fileUri) {
+        // Get the file content.
+        java.io.File jFile = getFileFromUri(fileUri);
+        if (jFile == null) {
+            Log.e(TAG, "Could not get the file content of Uri: " + fileUri.toString());
+            return;
+        }
+
+        // Create a vdl File object representing this pdf file and put it in the db.
+        File vFile = createVdlFile(jFile, fileUri);
+        mDB.addFile(vFile);
+
+        // Create a device set object and put it in the db.
+        DeviceSet ds = createDeviceSet(vFile);
+        mDB.addDeviceSet(ds);
+
+        // Join the device set.
+        joinDeviceSet(ds);
     }
 
     @Override
@@ -421,6 +447,21 @@ public class PdfViewerActivity extends Activity {
 
     private static void handleException(Exception e) {
         Log.e(TAG, e.getMessage(), e);
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        Log.i(TAG, String.format("onActivityResult(%d, %d, data) called", requestCode, resultCode));
+        if (mDB.onActivityResult(requestCode, resultCode, data)) {
+            return;
+        }
+
+        // Any other activity results would be handled here.
+        Log.w(TAG, String.format(
+                "Unhandled activity result. (requestCode: %d, resultCode: %d)",
+                requestCode, resultCode));
     }
 
 }

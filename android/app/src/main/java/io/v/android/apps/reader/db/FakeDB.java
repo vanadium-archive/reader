@@ -132,8 +132,14 @@ public class FakeDB implements DB {
         }
     }
 
+    @Override
     public void init(Activity activity) {
         // Nothing to do.
+    }
+
+    @Override
+    public boolean isInitialized() {
+        return true;
     }
 
     @Override

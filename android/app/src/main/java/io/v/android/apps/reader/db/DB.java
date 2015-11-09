@@ -50,6 +50,13 @@ public interface DB {
     void init(Activity activity);
 
     /**
+     * Tells if initialization process is completed.
+     *
+     * @return true if the initialization process is completed.
+     */
+    boolean isInitialized();
+
+    /**
      * If init() sent an intent to another Activity, the result must be forwarded
      * from our app's activity to this method.
      *
