@@ -10,7 +10,7 @@ body {
   inherits: .reset;
   inherits: .type-base;
   inherits: .type-body;
-  background-color: var(--blue-grey-900);
+  background-color: var(--blue-grey-25);
 }
 
 .reader-app {
@@ -21,6 +21,8 @@ body {
 
 .reader-app main {
   flex: 1;
+  display: flex;
+  flex-direction: column;
 }
 
 a {

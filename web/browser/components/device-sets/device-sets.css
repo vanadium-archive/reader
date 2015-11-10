@@ -1,0 +1,68 @@
+/* Copyright 2015 The Vanadium Authors. All rights reserved. */
+/* Use of this source code is governed by a BSD-style */
+/* license that can be found in the LICENSE file. */
+
+@import "../base/variables.css";
+
+.device-sets {
+  /* HACK: Header's title line-height + 2x the gutters. */
+  margin-top: calc(20px + (var(--gutter) * 2));
+  padding-left: var(--gutter);
+  padding-right: var(--gutter);
+  border-top: 1px solid transparent;
+  flex: 1;
+}
+
+.device-sets .blank-slate {
+  padding: var(--gutter) 0;
+}
+
+.device-sets footer {
+  display: flex;
+  position: fixed;
+  right: 0;
+  bottom: 0;
+}
+
+.device-sets footer .hidden {
+  display: none;
+}
+
+.device-sets footer .spacer {
+  flex: 1;
+}
+
+.device-sets footer .fab {
+  position: relative;
+  margin-right: var(--gutter);
+  margin-bottom: var(--gutter);
+  border-radius: 50%;
+  width: calc(var(--gutter) * 2);
+  height: calc(var(--gutter) * 2);
+  box-shadow: var(--drop-shadow);
+  background-color: var(--deeporange-A200);
+  padding: 0;
+  overflow: hidden;
+  cursor: pointer;
+  transition: box-shadow 0.2s cubic-bezier(0.4, 0, 1, 1),
+    background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+    color 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.device-sets footer .fab:hover {
+
+}
+
+.device-sets footer .fab:active {
+  box-shadow: var(--drop-shadow-intense);
+  background-color: color(var(--deeporange-A200) shade(10%));
+}
+
+.device-sets footer .fab .material-icons {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  line-height: 1;
+  transform: translate(-12px, -12px);
+  color: var(--white);
+}

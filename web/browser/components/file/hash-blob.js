@@ -4,8 +4,9 @@
 
 var assert = require('assert');
 var BlobReader = require('readable-blob-stream');
+var crypto = require('crypto');
 var once = require('once');
-var sha256d = require('sha256d');
+var pump = require('pump');
 var through = require('through2');
 var window = require('global/window');
 
@@ -15,22 +16,22 @@ function hash(blob, callback) {
   callback = once(callback);
   assert.ok(blob instanceof window.Blob, 'Must use a Blob object.');
 
-  var h = sha256d();
-  var stream = through(write, flush);
-  var rs = new BlobReader(blob);
+  var md5 = crypto.createHash('md5');
+  var writer = through(update);
+  var reader = new BlobReader(blob);
 
-  rs
-  .on('error', callback)
-  .pipe(stream)
-  .on('error', callback);
+  pump(reader, writer, finish);
 
-  function write(buffer, enc, cb) {
-    h.update(buffer);
-    cb();
+  function update(buffer, enc, callback) {
+    md5.update(buffer, enc);
+    callback();
   }
 
-  function flush(cb) {
-    callback(null, h.digest('hex'));
-    cb();
+  function finish(err) {
+    if (err) {
+      return callback(err);
+    }
+
+    callback(null, md5.digest('hex'));
   }
 }

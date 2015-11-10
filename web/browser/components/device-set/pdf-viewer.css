@@ -1,0 +1,80 @@
+/* Copyright 2015 The Vanadium Authors. All rights reserved. */
+/* Use of this source code is governed by a BSD-style */
+/* license that can be found in the LICENSE file. */
+
+@import "../base/variables.css";
+@import "../base/typography.css";
+
+.pdf-viewer {
+  flex: 1;
+}
+
+.pdf-viewer .progress {
+  display: block;
+  margin: 0;
+  height: 4px;
+  max-width: 100%;
+  position: relative;
+  background-color: var(--cyan-600);
+}
+
+.pdf-viewer .progress.hidden {
+  display: none;
+}
+
+.pdf-viewer .progress-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 0%;
+  z-index: 1;
+  transition: width 0.2s  cubic-bezier(0.4, 0, 0.2, 1);
+  background-color: var(--cyan-900);
+}
+
+.pdf-controls {
+  position: fixed;
+  top: 0;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  background-color: var(--white);
+  box-shadow: var(--drop-shadow);
+  z-index: 900;
+  display: flex;
+}
+
+.pdf-controls .pdf-controls.hidden {
+  display: none;
+}
+
+.pdf-controls .back {
+  margin-left: var(--gutter);
+}
+
+.pdf-controls .title {
+  inherits: .type-smallhead;
+  flex: 1;
+  padding: var(--gutter);
+  text-align: left;
+  color: inherit;
+}
+
+.pdf-controls .pager {
+  display: flex;
+}
+
+.pdf-controls .pager .meta {
+  margin-right: var(--gutter-half);
+}
+
+.pdf-controls .menu {
+  margin-right: var(--gutter);
+  margin-left: var(--gutter);
+}
+
+.pdf-canvas {
+  /* HACK: Header's title line-height + 2x the gutters. */
+  margin-top: calc(20px + (var(--gutter) * 2));
+}

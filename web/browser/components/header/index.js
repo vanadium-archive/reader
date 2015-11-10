@@ -2,10 +2,9 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+var css = require('./index.css');
 var h = require('mercury').h;
 var insert = require('insert-css');
-var css = require('./index.css');
-var anchor = require('../router/anchor');
 
 module.exports = {
   render: render
@@ -14,18 +13,9 @@ module.exports = {
 function render(state, channels) {
   insert(css);
 
-  if (state.hash) {
-    return h('.hidden');
-  }
-
   return h('header', [
-    anchor({
-      href: '/',
-      className: 'menu'
-    }, 'Menu'),
-    h('.title', 'PDF Reader'),
-    h('a.more', {
-      href: '#'
-    }, '...')
+    h('a.title', {
+      href: '/#!/'
+    }, 'PDF Reader')
   ]);
 }

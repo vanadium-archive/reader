@@ -5,8 +5,26 @@
 module.exports = {
   toArray: toArray,
   removed: removed,
-  each: each
+  each: each,
+  map: map
 };
+
+// Map an object's keys to vdom.
+function map(object, render, channels) {
+  var array = [];
+  var keys = Object.keys(object);
+  var length = keys.length;
+
+  for (var i = 0; i < length; i++) {
+    var key = keys[i];
+    var value = object[key];
+    var item = render(value, channels);
+
+    array.push(item);
+  }
+
+  return array;
+}
 
 // # toArray(object)
 //

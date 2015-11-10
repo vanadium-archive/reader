@@ -22,7 +22,7 @@ function lambda(ev, broadcast) {
   }
 
   // Merges passed in data.
-  var file = target.files[0];
-  var data = extend({ file: file }, this.data);
+  var blob = target.files[0];
+  var data = extend({ blob: blob }, this.data);
   broadcast(data);
 }
