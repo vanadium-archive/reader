@@ -152,4 +152,24 @@ public interface DB {
      */
     void deleteDeviceSet(String id);
 
+    /**
+     * Stores the given bytes and returns a File object representing the written data, which can be
+     * passed to readBytes() method to read the data back.
+     *
+     * The returned File object should be explicitly added to the database by calling addFile().
+     *
+     * @param bytes bytes to be written.
+     * @param title title of this file.
+     * @return      a File object representing the written data.
+     */
+    File storeBytes(byte[] bytes, String title);
+
+    /**
+     * Reads the bytes from the File object.
+     *
+     * @param file the file to be read.
+     * @return     the file contents as a byte array.
+     */
+    byte[] readBytes(File file);
+
 }

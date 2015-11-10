@@ -14,6 +14,7 @@ import android.provider.OpenableColumns;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.Toast;
 
 import com.google.common.io.ByteStreams;
 
@@ -173,14 +174,14 @@ public class PdfViewerActivity extends Activity {
 
     private void createAndJoinDeviceSet(Uri fileUri) {
         // Get the file content.
-        java.io.File jFile = getFileFromUri(fileUri);
-        if (jFile == null) {
-            Log.e(TAG, "Could not get the file content of Uri: " + fileUri.toString());
-            return;
-        }
+        byte[] bytes = getBytesFromUri(fileUri);
 
         // Create a vdl File object representing this pdf file and put it in the db.
-        File vFile = createVdlFile(jFile, fileUri);
+        File vFile = mDB.storeBytes(bytes, getTitleFromUri(fileUri));
+        Log.i(TAG, "vFile created: " + vFile);
+        if (vFile == null) {
+            Log.e(TAG, "Could not store the file content of Uri: " + fileUri.toString());
+        }
         mDB.addFile(vFile);
 
         // Create a device set object and put it in the db.
@@ -202,15 +203,6 @@ public class PdfViewerActivity extends Activity {
         leaveDeviceSet();
     }
 
-    private File createVdlFile(java.io.File jFile, Uri uri) {
-        String id = jFile.getName();
-        String title = getTitleFromUri(uri);
-        long size = jFile.length();
-        String type = Constants.PDF_MIME_TYPE;
-
-        return new File(id, null, title, size, type);
-    }
-
     private DeviceMeta createDeviceMeta() {
         String deviceId = DeviceInfoFactory.getDeviceId(this);
         int page = 1;
@@ -229,8 +221,23 @@ public class PdfViewerActivity extends Activity {
     }
 
     private void joinDeviceSet(DeviceSet ds) {
-        // TODO(youngseokyoon): use the blobref instead.
+        // Get the file contents from the database
+        // TODO(youngseokyoon): get the blob asynchronously. right now, it's blocking the UI thread.
+        File file = mDB.getFileList().getItemById(ds.getFileId());
+        byte[] bytes = mDB.readBytes(file);
+        if (bytes == null) {
+            Toast.makeText(this, "Could not load the file contents.", Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        // The pdf viewer widget requires the file to be an actual java.io.File object.
+        // Create a temporary file and write the contents.
         java.io.File jFile = new java.io.File(getCacheDir(), ds.getFileId());
+        try (FileOutputStream out = new FileOutputStream(jFile)) {
+            out.write(bytes);
+        } catch (IOException e) {
+            handleException(e);
+        }
 
         // Initialize the pdf viewer widget with the file content.
         // TODO(youngseokyoon): enable swipe and handle the page change events.
@@ -266,37 +273,12 @@ public class PdfViewerActivity extends Activity {
         mCurrentDS = null;
     }
 
-    private java.io.File getFileFromUri(Uri uri) {
-        Log.i(TAG, "File Uri: " + uri.toString());
+    private byte[] getBytesFromUri(Uri uri) {
+        Log.i(TAG, "getBytesFromUri: " + uri.toString());
 
         try (InputStream in = getContentResolver().openInputStream(uri)) {
             // Get the entire file contents as a byte array.
-            byte[] bytes = ByteStreams.toByteArray(in);
-
-            // Write the contents in a temporary file.
-            // For now, use the md5 hash string of the file as the filename.
-            // TODO(youngseokyoon): use the Syncbase blob to store the file.
-
-            String fileKey = IdFactory.getFileId(bytes);
-            if (fileKey == null) {
-                fileKey = IdFactory.getRandomId();
-                Log.w(TAG, "Could not get the MD5 hash string for Uri: " + uri.toString());
-                Log.w(TAG, "- Using a random UUID instead.");
-            }
-            Log.i(TAG, "FileKey: " + fileKey);
-
-            java.io.File jFile = new java.io.File(getCacheDir(), fileKey);
-            if (jFile.exists() && jFile.length() == bytes.length) {
-                Log.i(TAG, "The file already exists in the cache directory.");
-                return jFile;
-            }
-
-            Log.i(TAG, "Creating pdf file: " + jFile.getPath());
-            try (FileOutputStream out = new FileOutputStream(jFile)) {
-                out.write(bytes);
-            }
-
-            return jFile;
+            return ByteStreams.toByteArray(in);
         } catch (IOException e) {
             handleException(e);
         }

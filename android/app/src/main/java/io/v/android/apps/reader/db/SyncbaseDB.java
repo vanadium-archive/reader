@@ -15,12 +15,16 @@ import android.widget.Toast;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
+import com.google.common.io.ByteStreams;
 
+import java.io.IOException;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
 import io.v.android.apps.reader.model.DeviceInfoFactory;
+import io.v.android.apps.reader.model.IdFactory;
 import io.v.android.apps.reader.model.Listener;
 import io.v.android.apps.reader.vdl.Device;
 import io.v.android.apps.reader.vdl.DeviceSet;
@@ -44,6 +48,7 @@ import io.v.v23.security.access.AccessList;
 import io.v.v23.security.access.Constants;
 import io.v.v23.security.access.Permissions;
 import io.v.v23.services.syncbase.nosql.BatchOptions;
+import io.v.v23.services.syncbase.nosql.BlobRef;
 import io.v.v23.services.syncbase.nosql.KeyValue;
 import io.v.v23.services.syncbase.nosql.SyncgroupMemberInfo;
 import io.v.v23.services.syncbase.nosql.SyncgroupSpec;
@@ -53,6 +58,8 @@ import io.v.v23.syncbase.Syncbase;
 import io.v.v23.syncbase.SyncbaseApp;
 import io.v.v23.syncbase.SyncbaseService;
 import io.v.v23.syncbase.nosql.BatchDatabase;
+import io.v.v23.syncbase.nosql.BlobReader;
+import io.v.v23.syncbase.nosql.BlobWriter;
 import io.v.v23.syncbase.nosql.Database;
 import io.v.v23.syncbase.nosql.RowRange;
 import io.v.v23.syncbase.nosql.Syncgroup;
@@ -484,6 +491,51 @@ public class SyncbaseDB implements DB {
         } catch (VException e) {
             handleError("Failed to delete the device set with id " + id + ": " + e.getMessage());
         }
+    }
+
+    @Override
+    public File storeBytes(byte[] bytes, String title) {
+        // In case of Syncbase DB, store the bytes as a blob.
+        // TODO(youngseokyoon): check if the same blob is already in the database.
+        try {
+            BlobWriter writer = mLocalSB.db.writeBlob(mVContext, null);
+            OutputStream out = writer.stream(mVContext);
+            out.write(bytes);
+            out.close();
+
+            writer.commit(mVContext);
+
+            BlobRef ref = writer.getRef();
+
+            return new File(
+                    IdFactory.getFileId(bytes),
+                    ref,
+                    title,
+                    bytes.length,
+                    io.v.android.apps.reader.Constants.PDF_MIME_TYPE
+            );
+        } catch (VException | IOException e) {
+            handleError("Could not write the blob: " + e.getMessage());
+        }
+
+        return null;
+    }
+
+    @Override
+    public byte[] readBytes(File file) {
+        if (file == null || file.getRef() == null) {
+            return null;
+        }
+
+        try {
+            BlobReader reader = mLocalSB.db.readBlob(mVContext, file.getRef());
+            return ByteStreams.toByteArray(reader.stream(mVContext, 0L));
+        } catch (VException | IOException e) {
+            handleError("Could not read the blob " + file.getRef().toString()
+                    + ": " + e.getMessage());
+        }
+
+        return null;
     }
 
     private void handleError(String msg) {

@@ -7,11 +7,19 @@ package io.v.android.apps.reader.db;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
+import android.util.Log;
 
+import com.google.common.io.ByteStreams;
+
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+import io.v.android.apps.reader.Constants;
 import io.v.android.apps.reader.model.DeviceInfoFactory;
+import io.v.android.apps.reader.model.IdFactory;
 import io.v.android.apps.reader.model.Listener;
 import io.v.android.apps.reader.vdl.Device;
 import io.v.android.apps.reader.vdl.DeviceSet;
@@ -22,11 +30,15 @@ import io.v.android.apps.reader.vdl.File;
  */
 public class FakeDB implements DB {
 
+    private static final String TAG = FakeDB.class.getSimpleName();
+
+    private Context mContext;
     private FakeFileList mFileList;
     private FakeDeviceList mDeviceList;
     private FakeDeviceSetList mDeviceSetList;
 
     public FakeDB(Context context) {
+        mContext = context;
         mFileList = new FakeFileList();
         mDeviceList = new FakeDeviceList();
         mDeviceSetList = new FakeDeviceSetList();
@@ -186,5 +198,38 @@ public class FakeDB implements DB {
     @Override
     public void deleteDeviceSet(String id) {
         mDeviceSetList.removeItemById(id);
+    }
+
+    @Override
+    public File storeBytes(byte[] bytes, String title) {
+        // In Fake DB, store the bytes as a temporary file in the local filesystem.
+        String id = IdFactory.getFileId(bytes);
+
+        java.io.File jFile = new java.io.File(mContext.getCacheDir(), id);
+        try (FileOutputStream out = new FileOutputStream(jFile)) {
+            out.write(bytes);
+        } catch (IOException e) {
+            Log.e(TAG, e.getMessage(), e);
+        }
+
+        return new File(
+                id,
+                null,
+                title,
+                bytes.length,
+                Constants.PDF_MIME_TYPE
+        );
+    }
+
+    @Override
+    public byte[] readBytes(File file) {
+        java.io.File jFile = new java.io.File(mContext.getCacheDir(), file.getId());
+        try (FileInputStream in = new FileInputStream(jFile)) {
+            return ByteStreams.toByteArray(in);
+        } catch (IOException e) {
+            Log.e(TAG, e.getMessage(), e);
+        }
+
+        return null;
     }
 }
