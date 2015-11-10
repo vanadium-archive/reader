@@ -80,5 +80,5 @@ dependencies {
 
 vdl {
     inputPaths += new File(projectDir, '../../common').canonicalPath
-    packageTranslations += 'vdl->io.v.android.apps.reader.vdl'
+    packageTranslations += 'vdl->io/v/android/apps/reader/vdl'
 }

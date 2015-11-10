@@ -287,7 +287,7 @@ public class SyncbaseDB implements DB {
         );
 
         try {
-            group.create(mVContext, spec, new SyncgroupMemberInfo((byte) 0));
+            group.create(mVContext, spec, new SyncgroupMemberInfo());
             Log.i(TAG, "Syncgroup is created successfully.");
         } catch (VException e) {
             if (e.is(Errors.EXIST)) {
@@ -308,7 +308,7 @@ public class SyncbaseDB implements DB {
         Syncgroup group = mLocalSB.db.getSyncgroup(mSyncgroupName);
 
         try {
-            SyncgroupSpec spec = group.join(mVContext, new SyncgroupMemberInfo((byte) 0));
+            SyncgroupSpec spec = group.join(mVContext, new SyncgroupMemberInfo());
             Log.i(TAG, "Successfully joined the syncgroup!");
             Log.i(TAG, "Syncgroup spec: " + spec);
 
