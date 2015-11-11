@@ -17,7 +17,7 @@ host ?= 127.0.0.1
 port ?= 8080
 syncbase_port ?= 4000
 cloudsync_port ?= 8000
-id ?= $(shell if test -e tmp/id; then cat tmp/id; else PATH=$(PATH) bin/cuid; fi)
+id ?= $(shell if test -e tmp/id; then cat tmp/id; else PATH=$(PATH) bin/uuid; fi)
 
 all: public/bundle.js node_modules
 	@true  # silences watch

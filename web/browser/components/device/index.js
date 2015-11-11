@@ -2,12 +2,12 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-var cuid = require('cuid');
 var debug = require('debug')('reader:device');
 var event = require('synthetic-dom-events');
 var extend = require('xtend');
 var hg = require('mercury');
 var raf = require('raf');
+var uuid = require('uuid').v4;
 var window = require('global/window');
 
 module.exports = {
@@ -16,7 +16,7 @@ module.exports = {
 
 function state(options, key) {
   options = extend({
-    id: key || cuid(),
+    id: key || uuid(),
     screen: {}
   }, options);
   debug('init: %o', options);

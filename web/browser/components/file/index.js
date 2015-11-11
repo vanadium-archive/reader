@@ -2,12 +2,12 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-var cuid = require('cuid');
 var db = require('../../dom/blob-store');
 var debug = require('debug')('reader:file');
 var extend = require('xtend');
 var hash = require('./hash-blob');
 var hg = require('mercury');
+var uuid = require('uuid').v4;
 var window = require('global/window');
 
 module.exports = {
@@ -16,7 +16,7 @@ module.exports = {
 
 function state(options, key) {
   options = extend({
-    id: key || cuid()
+    id: key || uuid()
   }, options);
 
   debug('init: %o', options);
