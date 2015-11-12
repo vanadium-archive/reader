@@ -58,7 +58,7 @@ import io.v.v23.syncbase.nosql.RowRange;
 import io.v.v23.syncbase.nosql.Syncgroup;
 import io.v.v23.syncbase.nosql.Table;
 import io.v.v23.syncbase.nosql.WatchChange;
-import io.v.v23.verror.Errors;
+import io.v.v23.verror.ExistException;
 import io.v.v23.verror.VException;
 import io.v.v23.vom.VomUtil;
 
@@ -289,10 +289,9 @@ public class SyncbaseDB implements DB {
         try {
             group.create(mVContext, spec, new SyncgroupMemberInfo());
             Log.i(TAG, "Syncgroup is created successfully.");
-        } catch (VException e) {
-            if (e.is(Errors.EXIST)) {
+        } catch (ExistException e) {
                 Log.i(TAG, "Syncgroup already exists.");
-            } else {
+        } catch (VException e) {
                 handleError("Syncgroup could not be created: " + e.getMessage());
                 return;
             }
