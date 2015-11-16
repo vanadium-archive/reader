@@ -290,11 +290,10 @@ public class SyncbaseDB implements DB {
             group.create(mVContext, spec, new SyncgroupMemberInfo());
             Log.i(TAG, "Syncgroup is created successfully.");
         } catch (ExistException e) {
-                Log.i(TAG, "Syncgroup already exists.");
+            Log.i(TAG, "Syncgroup already exists.");
         } catch (VException e) {
-                handleError("Syncgroup could not be created: " + e.getMessage());
-                return;
-            }
+            handleError("Syncgroup could not be created: " + e.getMessage());
+            return;
         }
 
         joinSyncgroup();
