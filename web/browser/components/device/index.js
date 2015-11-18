@@ -17,12 +17,17 @@ module.exports = {
 function state(options, key) {
   options = extend({
     id: key || uuid(),
-    screen: {}
+    linked: true,
+    screen: {},
+    index: 0
   }, options);
+
   debug('init: %o', options);
 
   var atom = hg.state({
     id: hg.value(options.id),
+    linked: hg.value(options.linked),
+    index: hg.value(options.index),
     current: hg.value(options.current || false),
     type: hg.value(options.type),
     alias: hg.value(options.alias),

@@ -125,12 +125,10 @@ cloudsync: bin/syncbased credentials tmp
 		--v23.credentials="credentials" \
 		--v23.permissions.literal='{"Admin":{"In":["..."]},"Write":{"In":["..."]},"Read":{"In":["..."]},"Resolve":{"In":["..."]},"Debug":{"In":["..."]}}'
 
-.PHONY:
 vdl: browser/vanadium/vdl/index.js
-	@true  # silence "make: Nothing to be done for `vdl'."
 
 browser/vanadium/vdl/index.js: $(vdl_files)
 	VDLPATH=$(VDLPATH) vdl generate --lang javascript \
 		-js-out-dir ./browser/vanadium \
 		vdl
-
+	@touch $@
