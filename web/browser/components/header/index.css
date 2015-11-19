@@ -14,7 +14,7 @@ header {
   background-color: var(--cyan-800);
   box-shadow: var(--drop-shadow);
   color: var(--white);
-  z-index: 900;
+  z-index: 2;
 }
 
 header.hidden {

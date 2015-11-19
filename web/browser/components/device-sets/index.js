@@ -63,6 +63,13 @@ function add(state, data) {
 
   ds.devices.put(d.id(), d);
   state.collection.put(ds.id(), ds);
+
+  // TODO(jasoncampbell): Remove once syncbase is hooked back up.
+  debug('adding 3 more fake devices for debugging');
+  for (var i = 0; i < 3; i++) {
+    d = device.state({ index: i + 1 });
+    ds.devices.put(d.id(), d);
+  }
 }
 
 function remove(state, data) {

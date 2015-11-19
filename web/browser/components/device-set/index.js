@@ -7,7 +7,9 @@ var device = require('../device');
 var extend = require('xtend');
 var file = require('../file');
 var hg = require('mercury');
+var modal = require('../modal');
 var read = require('../../dom/read-blob');
+var util = require('../../util');
 var uuid = require('uuid').v4;
 
 module.exports = {
@@ -30,6 +32,8 @@ function state(options, key) {
   var atom = hg.state({
     id: hg.value(options.id),
     error: hg.value(null),
+    modal: modal.state(options.modal),
+
     file: file.state(options.file),
     pdf: hg.value(null),
     pages: hg.varhash({
@@ -37,12 +41,27 @@ function state(options, key) {
       current: options.pages.current || 1,
     }),
     progress: hg.value(0),
+
     devices: hg.varhash(options.devices, device.state),
+
+    manager: hg.struct({
+      active: hg.value(true),
+      dragID: hg.value(''),
+      overID: hg.value(''),
+    }),
     channels: {
       load: load,
       previous: previous,
       next: next,
-      manage: manage
+
+      manage: manage,
+
+      unlink: unlink,
+      link: link,
+
+      drag: drag,
+      reorder: reorder,
+      reset: reset
     }
   });
 
@@ -130,10 +149,85 @@ function next(state, data) {
 }
 
 function manage(state, data) {
-  debug('manage device set: %s', state.id());
+  state.modal.active.set(true);
+}
+
+function unlink(state, data) {
+  var device = state.devices.get(data.id);
+  device.linked.set(false);
+  device.index.set(null);
+
+  // TODO(jasoncampbell): Refactor so that re-indexing is not required.
+  util
+  .toArray(state.devices)
+  .sort(function sortByIndex(a, b) {
+    var value = 0;
+
+    if (a.index > b.index) {
+      value = 1;
+    }
+
+    if (a.index < b.index) {
+      value = -1;
+    }
+
+    return value;
+  }).filter(function filter(device) {
+    return device.linked();
+  }).forEach(function (device, index) {
+    debug('reindexing: %s', device.id());
+    device.index.set(index);
+  });
+
+  // Reset the manager.
+  reset(state, data);
+}
+
+function link(state, data) {
+  var device = state.devices.get(data.id);
+
+  // This could go away once the drag handlers broadcast correctly.
+  if (! data.id || !device || device.linked()) {
+    return;
+  }
+
+  // TODO(jasoncampbell): Refactor so that re-indexing is not required.
+  var linked = util.toArray(state.devices()).filter(function(device) {
+    return device.linked;
+  });
+
+  device.linked.set(true);
+  device.index.set(linked.length);
 }
 
 // Prevent circular references when serializing state.
 function _PDFDocumentProxyToJSON() {
   return {};
+}
+
+function drag(state, data) {
+  if (data.dragging) {
+    state.manager.dragID.set(data.id);
+  } else {
+    state.manager.dragID.set('');
+  }
+}
+
+function reorder(state, data) {
+  if (!data.dragging) {
+    return;
+  }
+
+  var droptarget = state.devices.get(data.droptarget);
+  var dragtarget = state.devices.get(data.dragtarget);
+  var index = droptarget.index();
+
+  // Swap drag and drop target indexes.
+  droptarget.index.set(dragtarget.index());
+  dragtarget.index.set(index);
+}
+
+function reset(state, data) {
+  state.manager.overID.set('');
+  state.manager.dragID.set('');
 }
