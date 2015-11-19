@@ -76,6 +76,7 @@ public class PdfViewerActivity extends Activity {
         setContentView(R.layout.activity_pdf_viewer);
 
         mPdfView = (PdfViewWrapper) findViewById(R.id.pdfview);
+        mPdfView.init();
 
         mButtonPrev = (Button) findViewById(R.id.button_prev);
         mButtonNext = (Button) findViewById(R.id.button_next);
@@ -240,10 +241,8 @@ public class PdfViewerActivity extends Activity {
         }
 
         // Initialize the pdf viewer widget with the file content.
-        // TODO(youngseokyoon): enable swipe and handle the page change events.
-        mPdfView.fromFile(jFile)
-                .enableSwipe(false)
-                .load();
+        Log.i(TAG, "File path: " + jFile.getPath());
+        mPdfView.loadUrl("file:///android_asset/pdfjs/index.html?file=" + jFile.getPath());
 
         // Create a new device meta, and update the device set with it.
         Log.i(TAG, "Joining device set: " + ds.getId());

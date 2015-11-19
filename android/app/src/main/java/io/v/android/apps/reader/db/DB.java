@@ -30,8 +30,8 @@ public interface DB {
                     result = instance;
                     if (result == null) {
                         // uncomment either one
-//                        instance = result = new FakeDB(context);
-                        instance = result = new SyncbaseDB(context);
+                        instance = result = new FakeDB(context);
+//                        instance = result = new SyncbaseDB(context);
                     }
                 }
             }

@@ -6,18 +6,59 @@ package io.v.android.apps.reader;
 
 import android.content.Context;
 import android.util.AttributeSet;
+import android.util.Log;
+import android.webkit.WebChromeClient;
+import android.webkit.WebResourceRequest;
+import android.webkit.WebResourceResponse;
+import android.webkit.WebSettings;
+import android.webkit.WebView;
+import android.webkit.WebViewClient;
 
-import com.joanzapata.pdfview.PDFView;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 
 /**
  * Wrapper class for the PDF Viewer library.
  *
  * May be replaced with another library if needed.
  */
-public class PdfViewWrapper extends PDFView {
+public class PdfViewWrapper extends WebView {
+
+    private static final String TAG = PdfViewWrapper.class.getSimpleName();
 
     public PdfViewWrapper(Context context, AttributeSet attrs) {
         super(context, attrs);
+    }
+
+    public void init() {
+        WebSettings settings = getSettings();
+        settings.setJavaScriptEnabled(true);
+        settings.setAllowUniversalAccessFromFileURLs(true);
+
+        setWebChromeClient(new WebChromeClient());
+
+        setWebViewClient(new WebViewClient() {
+            @Override
+            public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
+                Log.i(TAG, "shouldInterceptRequest called");
+
+                File file = new File(request.getUrl().getPath());
+                Log.i(TAG, "file path: " + file.getPath());
+
+                try {
+                    // Should NOT close the stream here, so that the stream can be read by WebView.
+                    InputStream inputStream = new FileInputStream(file);
+
+                    Log.i(TAG, "returning a custom WebResourceResponse");
+                    return new WebResourceResponse("application/pdf", "binary", inputStream);
+                } catch (IOException e) {
+                    Log.i(TAG, "falling back to super.shouldInterceptRequest");
+                    return super.shouldInterceptRequest(view, request);
+                }
+            }
+        });
     }
 
     /**
@@ -26,7 +67,11 @@ public class PdfViewWrapper extends PDFView {
      * @param page the page number to jump to. Page number is one-based.
      */
     public void setPage(int page) {
-        jumpTo(page);
+        // TODO(youngseokyoon): implement this.
+    }
+
+    public int getPageCount() {
+        return 0;
     }
 
 }
