@@ -59,6 +59,16 @@ public class PdfViewWrapper extends WebView {
                 }
             }
         });
+
+        loadUrl("file:///android_asset/pdfjs/pdf-web-view.html");
+    }
+
+    /**
+     * Loads the PDF file at the given path into the pdf.js component within WebView.
+     * NOTE: must be called after the page loading is finished.
+     */
+    public void loadPdfFile(String filePath) {
+        evaluateJavascript("window.atom.href.set(\"" + filePath + "\");", null);
     }
 
     /**
@@ -67,11 +77,13 @@ public class PdfViewWrapper extends WebView {
      * @param page the page number to jump to. Page number is one-based.
      */
     public void setPage(int page) {
-        // TODO(youngseokyoon): implement this.
+        evaluateJavascript("window.atom.pages.current.set(" + page + ");", null);
     }
 
     public int getPageCount() {
-        return 0;
+        // TODO(youngseokyoon): provide a JS interface to set the page count from the JS side.
+        // For now, just return 10 for testing purposes.
+        return 10;
     }
 
 }

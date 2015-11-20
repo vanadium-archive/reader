@@ -5,3 +5,5 @@
 /build
 /captures
 **/*.iml
+**/assets/pdfjs/pdf*
+

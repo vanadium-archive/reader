@@ -13,6 +13,8 @@ import android.os.Bundle;
 import android.provider.OpenableColumns;
 import android.util.Log;
 import android.view.View;
+import android.webkit.WebView;
+import android.webkit.WebViewClient;
 import android.widget.Button;
 import android.widget.Toast;
 
@@ -233,7 +235,7 @@ public class PdfViewerActivity extends Activity {
 
         // The pdf viewer widget requires the file to be an actual java.io.File object.
         // Create a temporary file and write the contents.
-        java.io.File jFile = new java.io.File(getCacheDir(), ds.getFileId());
+        final java.io.File jFile = new java.io.File(getCacheDir(), ds.getFileId());
         try (FileOutputStream out = new FileOutputStream(jFile)) {
             out.write(bytes);
         } catch (IOException e) {
@@ -242,7 +244,15 @@ public class PdfViewerActivity extends Activity {
 
         // Initialize the pdf viewer widget with the file content.
         Log.i(TAG, "File path: " + jFile.getPath());
-        mPdfView.loadUrl("file:///android_asset/pdfjs/index.html?file=" + jFile.getPath());
+
+        // TODO(youngseokyoon): move this logic to PdfViewWrapper
+        mPdfView.setWebViewClient(new WebViewClient() {
+            @Override
+            public void onPageFinished(WebView view, String url) {
+                super.onPageFinished(view, url);
+                mPdfView.loadPdfFile(jFile.getPath());
+            }
+        });
 
         // Create a new device meta, and update the device set with it.
         Log.i(TAG, "Joining device set: " + ds.getId());

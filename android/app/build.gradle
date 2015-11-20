@@ -68,7 +68,6 @@ dependencies {
     compile 'com.android.support:appcompat-v7:22.2.1'
     compile 'com.android.support:cardview-v7:22.2.1'
     compile 'com.android.support:recyclerview-v7:22.2.1'
-    compile 'com.joanzapata.pdfview:android-pdfview:1.0.4@aar'
     compile 'io.v:vanadium-android:0.1'
 }
 
@@ -76,3 +75,20 @@ vdl {
     inputPaths += new File(projectDir, '../../common').canonicalPath
     packageTranslations += 'vdl->io/v/android/apps/reader/vdl'
 }
+
+// The two tasks below are used for copying the pdf.js files into assets/pdfjs directory.
+task generatePdfJsFiles(type: Exec) {
+    workingDir '../../web'
+    commandLine 'make', 'public/pdf-web-view.js'
+}
+
+task copyPdfJsFiles(type: Copy, dependsOn: 'generatePdfJsFiles') {
+    from('../../web/public') {
+        include 'pdf*'
+    }
+
+    into 'src/main/assets/pdfjs'
+}
+
+// These two tasks should run before 'preBuild' task
+tasks['preBuild'].dependsOn('copyPdfJsFiles')
