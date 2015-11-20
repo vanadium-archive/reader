@@ -2,7 +2,6 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-var debug = require('debug')('pdf-viewer');
 var document = require('global/document');
 var domready = require('domready');
 var struct = require('observ-struct');
@@ -25,18 +24,6 @@ var atom = struct({
 });
 
 window.atom = atom;
-window.debug = require('debug');
-
-// When the state atom is updated to toggle debugging call the correct methods
-// on the debug module.
-atom.debug(function debugchange(value) {
-  // TODO(jasoncampbell): reload page so changes are picked up.
-  if (value) {
-    window.debug.enable('pdf-*');
-  } else {
-    window.debug.disable();
-  }
-});
 
 // Global cache of the canvas element.
 var canvas = null;
@@ -85,8 +72,9 @@ domready(function ondomready() {
   // updates renders should be queued in a raf.
   atom.pdf.page(function pagechange(page) {
     debug('rendering page');
+    var ratio = window.devicePixelRatio || 1.0;
     // TODO(jasoncampbell): Use state set scale instead of defaulting to 1.0.
-    var scale = window.innerWidth/page.getViewport(1.0).width;
+    var scale = window.innerWidth/page.getViewport(ratio).width;
     var viewport = page.getViewport(scale);
 
     canvas.height = viewport.height;
@@ -128,3 +116,13 @@ function error(err) {
 }
 
 function noop() {}
+
+function debug(template, args) {
+  // Noop if debugging is disabled.
+  if (!atom.debug()) {
+    return;
+  }
+
+  template = 'pdf-viewer: ' + template;
+  console.log.apply(console, arguments);
+}
