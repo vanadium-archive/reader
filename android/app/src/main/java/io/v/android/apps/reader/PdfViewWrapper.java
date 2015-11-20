@@ -7,6 +7,7 @@ package io.v.android.apps.reader;
 import android.content.Context;
 import android.util.AttributeSet;
 import android.util.Log;
+import android.webkit.JavascriptInterface;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
@@ -27,6 +28,8 @@ import java.io.InputStream;
 public class PdfViewWrapper extends WebView {
 
     private static final String TAG = PdfViewWrapper.class.getSimpleName();
+
+    private int mPageCount;
 
     public PdfViewWrapper(Context context, AttributeSet attrs) {
         super(context, attrs);
@@ -60,6 +63,8 @@ public class PdfViewWrapper extends WebView {
             }
         });
 
+        addJavascriptInterface(new JSInterface(), "android");
+
         loadUrl("file:///android_asset/pdfjs/pdf-web-view.html");
     }
 
@@ -69,6 +74,9 @@ public class PdfViewWrapper extends WebView {
      */
     public void loadPdfFile(String filePath) {
         evaluateJavascript("window.atom.href.set(\"" + filePath + "\");", null);
+
+        // leave the page count as 0 until the page count value is properly set from JS side.
+        mPageCount = 0;
     }
 
     /**
@@ -81,9 +89,21 @@ public class PdfViewWrapper extends WebView {
     }
 
     public int getPageCount() {
-        // TODO(youngseokyoon): provide a JS interface to set the page count from the JS side.
-        // For now, just return 10 for testing purposes.
-        return 10;
+        return mPageCount;
+    }
+
+    /**
+     * This class provides public methods that can be called from the JavaScript side.
+     */
+    private class JSInterface {
+
+        private final String TAG = JSInterface.class.getSimpleName();
+
+        @JavascriptInterface
+        public void setPageCount(int pageCount) {
+            Log.d(TAG, "setPageCount(" + pageCount + ") called.");
+            mPageCount = pageCount;
+        }
     }
 
 }

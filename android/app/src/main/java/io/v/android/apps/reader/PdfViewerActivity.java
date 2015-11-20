@@ -331,7 +331,7 @@ public class PdfViewerActivity extends Activity {
      * Move all the linked pages to their previous pages.
      */
     private void prevPage() {
-        if (mCurrentDS == null) {
+        if (mCurrentDS == null || mPdfView.getPageCount() <= 0) {
             return;
         }
 
@@ -364,7 +364,7 @@ public class PdfViewerActivity extends Activity {
      * Move all the linked pages to their next pages.
      */
     private void nextPage() {
-        if (mCurrentDS == null) {
+        if (mCurrentDS == null || mPdfView.getPageCount() <= 0) {
             return;
         }
 

@@ -66,6 +66,12 @@ domready(function ondomready() {
     pdf.getPage(current).then(success, error);
   });
 
+  // Watch for the total page number changes and give the new value to the
+  // Android client.
+  atom.pages.total(function totalchange(current) {
+    window.android.setPageCount(current);
+  });
+
   // Watch for changes on the PDF.js page object. When it is updated trigger a
   // render.
   // TODO(jasoncampbell): To prevent rendering errors with frequent state
