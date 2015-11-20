@@ -10,6 +10,7 @@ web/node_modules
 web/npm-debug.log
 web/public/bundle.*
 web/tmp
+web/public/pdf-web-view.js
 
 # VDL generated stubs should be ignored
 web/browser/vanadium/v.io/*

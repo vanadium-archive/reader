@@ -19,7 +19,7 @@ syncbase_port ?= 4000
 cloudsync_port ?= 8000
 id ?= $(shell if test -e tmp/id; then cat tmp/id; else PATH=$(PATH) bin/uuid; fi)
 
-all: public/bundle.js node_modules
+all: public/bundle.js public/pdf-web-view.js
 	@true  # silences watch
 
 .DELETE_ON_ERROR:
@@ -42,6 +42,10 @@ public/bundle.js: browser/main.js $(js_files) $(css_files) node_modules tmp
 		--transform [ envify --ID $(id) ] \
 		$< 1> $@
 
+.DELETE_ON_ERROR:
+public/pdf-web-view.js: browser/pdf-web-view.js node_modules
+	browserify --debug $< 1> $@
+
 .PHONY:
 distclean: clean
 	@$(RM) -fr node_modules
@@ -59,9 +63,12 @@ clean:
 	@$(RM) -fr browser/vanadium/vdl
 
 .PHONY:
-lint: node_modules
+dependency-check:
 	@dependency-check package.json --entry browser/main.js
 	@dependency-check package.json --entry browser/main.js --unused --no-dev
+
+.PHONY:
+lint: node_modules
 	@jshint .
 
 .PHONY:

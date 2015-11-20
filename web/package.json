@@ -37,6 +37,8 @@
     "global": "^4.3.0",
     "insert-css": "^0.2.0",
     "mercury": "^14.0.0",
+    "observ": "^0.2.0",
+    "observ-struct": "^6.0.0",
     "once": "^1.3.2",
     "path-to-regexp": "^1.2.1",
     "pump": "^1.0.1",
