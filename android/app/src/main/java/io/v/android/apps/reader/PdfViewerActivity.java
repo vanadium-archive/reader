@@ -4,7 +4,6 @@
 
 package io.v.android.apps.reader;
 
-import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
@@ -12,7 +11,10 @@ import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.OpenableColumns;
+import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -39,7 +41,7 @@ import io.v.android.apps.reader.vdl.File;
 /**
  * Activity that shows the contents of the selected pdf file.
  */
-public class PdfViewerActivity extends Activity {
+public class PdfViewerActivity extends AppCompatActivity {
 
     private static final String TAG = PdfViewerActivity.class.getSimpleName();
 
@@ -48,6 +50,7 @@ public class PdfViewerActivity extends Activity {
     private PdfViewWrapper mPdfView;
     private Button mButtonPrev;
     private Button mButtonNext;
+    private MenuItem mMenuItemLinkPage;
 
     private DB mDB;
     private DBList<DeviceSet> mDeviceSets;
@@ -128,7 +131,10 @@ public class PdfViewerActivity extends Activity {
                 }
 
                 mCurrentDS = changed;
-                mPdfView.setPage(getDeviceMeta().getPage());
+
+                DeviceMeta dm = getDeviceMeta();
+                mPdfView.setPage(dm.getPage());
+                mMenuItemLinkPage.setChecked(dm.getLinked());
             }
 
             @Override
@@ -208,6 +214,36 @@ public class PdfViewerActivity extends Activity {
         }
 
         leaveDeviceSet();
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        // Inflate the menu; this adds items to the action bar if it is present.
+        getMenuInflater().inflate(R.menu.menu_pdf_viewer, menu);
+        mMenuItemLinkPage = menu.findItem(R.id.action_link_page);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch (item.getItemId()) {
+            case R.id.action_link_page:
+                toggleLinkedState(item.isChecked());
+                return true;
+
+            default:
+                return super.onOptionsItemSelected(item);
+        }
+    }
+
+    private void toggleLinkedState(boolean checked) {
+        DeviceMeta dm = getDeviceMeta();
+        if (dm == null) {
+            return;
+        }
+
+        dm.setLinked(!checked);
+        mDB.updateDeviceSet(mCurrentDS);
     }
 
     private DeviceMeta createDeviceMeta() {
@@ -347,6 +383,7 @@ public class PdfViewerActivity extends Activity {
                 dm.setPage(dm.getPage() - 1);
             }
 
+            mDB.updateDeviceSet(mCurrentDS);
             return;
         }
 
@@ -380,6 +417,7 @@ public class PdfViewerActivity extends Activity {
                 dm.setPage(dm.getPage() + 1);
             }
 
+            mDB.updateDeviceSet(mCurrentDS);
             return;
         }
 

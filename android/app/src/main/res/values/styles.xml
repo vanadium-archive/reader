@@ -10,11 +10,17 @@
         <item name="android:windowBackground">@color/windowBackground</item>
         <item name="android:colorButtonNormal">@color/buttonNormal</item>
         <item name="android:colorAccent">@color/accent</item>
+        <item name="android:itemTextAppearance">@style/PopupMenuTextStyle</item>
+        <item name="android:itemBackground">@color/itemBackground</item>
 
         <item name="colorPrimary">@color/primary</item>
         <item name="colorPrimaryDark">@color/primaryDark</item>
         <item name="colorButtonNormal">@color/buttonNormal</item>
         <item name="colorAccent">@color/accent</item>
+    </style>
+
+    <style name="PopupMenuTextStyle" parent="Theme.AppCompat.Light">
+        <item name="android:textColor">@color/textPrimary</item>
     </style>
 
 </resources>

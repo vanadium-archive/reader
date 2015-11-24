@@ -4,12 +4,12 @@
 
 package io.v.android.apps.reader;
 
-import android.app.Activity;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
 import android.net.Uri;
 import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
+import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.helper.ItemTouchHelper;
@@ -26,7 +26,7 @@ import io.v.android.apps.reader.db.DB;
  * When the user clicks on one of the device sets, it starts the PdfViewerActivity with the file
  * associated with the device set.
  */
-public class DeviceSetChooserActivity extends Activity {
+public class DeviceSetChooserActivity extends AppCompatActivity {
 
     private static final String TAG = DeviceSetChooserActivity.class.getSimpleName();
 

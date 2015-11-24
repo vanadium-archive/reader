@@ -6,4 +6,5 @@
     <color name="windowBackground">#455A64</color>
     <color name="buttonNormal">#E0F2F1</color>
     <color name="accent">#FF9800</color>
+    <color name="itemBackground">#004D40</color>
 </resources>
