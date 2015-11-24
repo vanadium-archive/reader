@@ -7,6 +7,7 @@ package io.v.android.apps.reader;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.ActivityInfo;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
@@ -70,6 +71,9 @@ public class PdfViewerActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        // TODO(youngseokyoon): allow screen rotation and properly handle orientation changes
+        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
 
         // Initialize the DB
         mDB = DB.Singleton.get(this);
