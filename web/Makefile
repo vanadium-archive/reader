@@ -105,7 +105,7 @@ credentials: bin/principal
 .PHONY:
 syncbase: bin/syncbased credentials tmp
 	$(eval blessing := $(shell bin/principal dump --v23.credentials=./credentials -s=true))
-	$(eval email := $(subst dev.v.io/u/,,$(blessing)))
+	$(eval email := $(subst dev.v.io:u:,,$(blessing)))
 	./bin/syncbased \
 		--v=5 \
 		--alsologtostderr=false \
@@ -120,7 +120,7 @@ syncbase: bin/syncbased credentials tmp
 .PHONY:
 cloudsync: bin/syncbased credentials tmp
 	$(eval blessing := $(shell bin/principal dump --v23.credentials=./credentials -s=true))
-	$(eval email := $(subst dev.v.io/u/,,$(blessing)))
+	$(eval email := $(subst dev.v.io:u:,,$(blessing)))
 	./bin/syncbased \
 		--v=5 \
 		--alsologtostderr=false \
