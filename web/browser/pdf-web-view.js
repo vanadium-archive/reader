@@ -2,69 +2,24 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+var assert = require('assert');
+var canvas = require('./widgets/canvas-widget');
 var document = require('global/document');
 var domready = require('domready');
-var struct = require('observ-struct');
-var value = require('observ');
+var format = require('format');
+var h = require('mercury').h;
+var hg = require('mercury');
 var window = require('global/window');
 
-var atom = struct({
-  debug: value(true),
-  href: value(null),
-  pdf: struct({
-    document: value(null),
-    page: value(null)
-  }),
-  pages: struct({
-    current: value(1),
-    total: value(0),
-  }),
-  scale: value(1),
-  progress: value(0),
-});
-
-window.atom = atom;
-
-// Global cache of the canvas element.
-var canvas = null;
+// Allow debugging in a normal browser.
+window.android = window.android || {
+  setPageCount: noop
+};
 
 domready(function ondomready() {
   debug('domready');
 
-  // Initial DOM Node setup.
-  canvas = document.createElement('canvas');
-  canvas.setAttribute('class','pdf-canvas');
-  document.body.style.margin = '0px';
-  document.body.style.padding = '0px';
-  document.body.appendChild(canvas);
-
-  // Watch for changes on the atom.href value, when it updates load the PDF file
-  // located at that location.
-  // Trigger with: atom.href.set(value)
-  atom.href(function hrefchange(href) {
-    debug('loading pdf file: %s', href);
-    PDFJS
-      .getDocument(href, null, password, progress)
-      .then(setPDF, error);
-  });
-
-  // Watch for page number changes and asyncronosly load the page from PDF.js
-  // APIs.
-  // Trigger with: atom.pages.current.set(value)
-  atom.pages.current(function pagechange(current) {
-    var total = atom.pages.total();
-
-    // Skip invalid operations.
-    if (current === 0 || !atom.pdf.document() || current > total) {
-      return;
-    }
-
-    debug('loading page: %s of %s', current, total);
-
-    var pdf = atom.pdf.document();
-    var success = atom.pdf.page.set.bind(null);
-    pdf.getPage(current).then(success, error);
-  });
+  var atom = state({});
 
   // Watch for the total page number changes and give the new value to the
   // Android client.
@@ -72,63 +27,156 @@ domready(function ondomready() {
     window.android.setPageCount(current);
   });
 
-  // Watch for changes on the PDF.js page object. When it is updated trigger a
-  // render.
-  // TODO(jasoncampbell): To prevent rendering errors with frequent state
-  // updates renders should be queued in a raf.
-  atom.pdf.page(function pagechange(page) {
-    debug('rendering page');
-    var ratio = window.devicePixelRatio || 1.0;
-    // TODO(jasoncampbell): Use state set scale instead of defaulting to 1.0.
-    var scale = window.innerWidth/page.getViewport(ratio).width;
-    var viewport = page.getViewport(scale);
+  window.atom = atom;
+  window.client = {
+    open: function openPDF(href) {
+      open(atom, { href: href });
+    },
+    page: function pagePDF(number) {
+      page(atom, { number: number });
+    }
+  };
 
-    canvas.height = viewport.height;
-    canvas.width = viewport.width;
+  hg.app(document.body, atom, render);
 
-    page.render({
-      canvasContext: canvas.getContext('2d'),
-      viewport: viewport
-    }).promise.then(noop, error);
-  });
+  return;
 });
 
-function setPDF(pdf) {
-  atom.pdf.document.set(pdf);
-  atom.pages.total.set(pdf.numPages);
-  atom.pages.current.set(1);
+function state(options) {
+  var atom = hg.state({
+    debug: hg.value(options.debug || true),
+    progress: hg.value(0),
+    pdf: hg.struct({
+      document: hg.value(null),
+      page: hg.value(null),
+    }),
+    pages: hg.struct({
+      current: hg.value(1),
+      total: hg.value(0),
+    }),
+    scale: hg.value(1),
+    ratio: hg.value(window.devicePixelRatio || 1),
+    width: hg.value(window.innerWidth),
+    height: hg.value(window.innerHeight),
+    channels: {
+      open: open,
+      page: page
+    }
+  });
+
+  return atom;
 }
 
-function progress(update) {
-  var float = (update.loaded/update.total) * 100;
-  var value = Math.floor(float);
+function open(state, data) {
+  assert.ok(data.href, 'data.href required');
+  debug('opening PDF file: %s', data.href);
 
-  // For some reason the update.loaded value above can be higher than the
-  // update.total value, in that case we can assume the progress is 100%.
-  if (value > 100) {
-    value = 100;
+  var promise = PDFJS.getDocument(data.href, null, password, progress);
+  promise.then(success, error);
+
+  function password() {
+    var message = format('Password required to open: "%s"', data.href);
+    var err = new Error(message);
+    error(err);
   }
 
-  atom.progress.set(value);
+  function progress(update) {
+    // Some servers or situations might not return the content-length header
+    // which is proxied to update.total. Skip updating the progress if this
+    // value is not set.
+    if (!update.total) {
+      return;
+    }
+
+    var float = (update.loaded/update.total) * 100;
+    var value = Math.floor(float);
+
+    // For some reason the update.loaded value above can be higher than the
+    // update.total value, in that case we can assume the progress is 100%.
+    if (value > 100) {
+      value = 100;
+    }
+
+    state.progress.set(value);
+  }
+
+  function success(pdf) {
+    state.pdf.document.set(pdf);
+    state.pages.total.set(pdf.numPages);
+    page(state, { number: 1 });
+  }
 }
 
-function password() {
-  debug('password required');
+function page(state, data) {
+  assert.ok(data.number, 'data.number required');
+
+  var pdf = state.pdf.document();
+  var total = state.pages.total();
+  var number = data.number;
+
+  // Skip invalid operations.
+  if (number === 0 || !pdf || number > total) {
+    return;
+  }
+
+  debug('loading page "%s"', number);
+
+  pdf.getPage(number).then(success, error);
+
+  function success(page) {
+    debug('loaded page "%s"', number);
+    var width = page.getViewport(1).width;
+    var scale = state.width() / width;
+    var viewport = page.getViewport(scale);
+
+    // Reset the scroll position on page change.
+    window.scroll(0, 0) ;
+
+    // Update the state.
+    state.pdf.page.set(page);
+    state.scale.set(scale);
+    state.height.set(viewport.height);
+    state.pages.current.set(number);
+  }
+}
+
+function render(state) {
+  return h('.pdf-viewer', [
+    canvas(draw, state)
+  ]);
+}
+
+
+function draw(context, state, done) {
+  // Skip render if missing the PDFJS page object.
+  if (!state.pdf.page) {
+    done();
+    return;
+  }
+
+  state.pdf.page.render({
+    canvasContext: context,
+    viewport: state.pdf.page.getViewport(state.scale)
+  }).promise.then(done, error);
 }
 
 // TODO(jasoncampbell): Add better error reporting and exception capturing.
 function error(err) {
-  debug('error: %s', err.stack);
+  throw err;
 }
 
 function noop() {}
 
-function debug(template, args) {
+function debug(template, value) {
   // Noop if debugging is disabled.
-  if (!atom.debug()) {
+  if (typeof window.atom === 'undefined' || !window.atom.debug()) {
     return;
   }
 
+  // The logging in Android Studio only shows the template string when calling
+  // console.log directly, pre-fromatting allows the logs to show the correct
+  // information.
   template = 'pdf-viewer: ' + template;
-  console.log.apply(console, arguments);
+  var message = format.apply(null, arguments);
+  console.log(message);
 }
