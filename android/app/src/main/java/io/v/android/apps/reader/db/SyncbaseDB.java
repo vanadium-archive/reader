@@ -414,7 +414,7 @@ public class SyncbaseDB implements DB {
         for (List<VCertificate> chain : blessings.getCertificateChains()) {
             for (VCertificate certificate : Lists.reverse(chain)) {
                 if (certificate.getExtension().contains("@")) {
-                    return certificate.getExtension();
+                    return certificate.getExtension().replace(':', '/');
                 }
             }
         }
