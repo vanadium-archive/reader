@@ -6,6 +6,7 @@ package io.v.android.apps.reader;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.content.pm.ActivityInfo;
 import android.net.Uri;
 import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
@@ -38,6 +39,9 @@ public class DeviceSetChooserActivity extends Activity {
 
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        // TODO(youngseokyoon): allow screen rotation and properly handle orientation changes
+        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
 
         // Initialize the DB
         mDB = DB.Singleton.get(this);
