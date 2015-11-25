@@ -43,7 +43,7 @@ public/bundle.js: browser/main.js $(js_files) $(css_files) node_modules tmp
 		$< 1> $@
 
 .DELETE_ON_ERROR:
-public/pdf-web-view.js: browser/pdf-web-view.js node_modules
+public/pdf-web-view.js: browser/pdf-web-view.js $(js_files) node_modules
 	browserify --debug $< 1> $@
 
 .PHONY:

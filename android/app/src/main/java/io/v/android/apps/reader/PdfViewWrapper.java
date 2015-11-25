@@ -73,7 +73,7 @@ public class PdfViewWrapper extends WebView {
      * NOTE: must be called after the page loading is finished.
      */
     public void loadPdfFile(String filePath) {
-        evaluateJavascript("window.atom.href.set(\"" + filePath + "\");", null);
+        evaluateJavascript("window.client.open(\"" + filePath + "\");", null);
 
         // leave the page count as 0 until the page count value is properly set from JS side.
         mPageCount = 0;
@@ -85,7 +85,7 @@ public class PdfViewWrapper extends WebView {
      * @param page the page number to jump to. Page number is one-based.
      */
     public void setPage(int page) {
-        evaluateJavascript("window.atom.pages.current.set(" + page + ");", null);
+        evaluateJavascript("window.client.page(" + page + ");", null);
     }
 
     public int getPageCount() {
