@@ -34,6 +34,9 @@ domready(function ondomready() {
     },
     page: function pagePDF(number) {
       page(atom, { number: number });
+    },
+    zoom: function zoomPDF(value) {
+      zoom(atom, { value: value });
     }
   };
 
@@ -60,7 +63,8 @@ function state(options) {
     height: hg.value(window.innerHeight),
     channels: {
       open: open,
-      page: page
+      page: page,
+      zoom: zoom
     }
   });
 
@@ -138,6 +142,26 @@ function page(state, data) {
     state.height.set(viewport.height);
     state.pages.current.set(number);
   }
+}
+
+function zoom(state, data) {
+  assert.ok(data.value, 'data.value is required');
+
+  // Ignore if the page object is unavailable.
+  if (!state.pdf.page()) {
+    return;
+  }
+
+  debug('zooming from "%s" to "%s"', state.scale(), data.value);
+
+  var page = state.pdf.page();
+  var viewport = page.getViewport(data.value);
+
+  // NOTE: By default this will zoom from the center of the viewport, some extra
+  // work will be required zoom from the center location of a pinch gesture.
+  state.width.set(viewport.width);
+  state.height.set(viewport.height);
+  state.scale.set(data.value);
 }
 
 function render(state) {
