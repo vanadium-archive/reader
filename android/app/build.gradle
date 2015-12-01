@@ -23,6 +23,18 @@ apply plugin: 'com.android.application'
 // It's going to use VDL.
 apply plugin: 'io.v.vdl'
 
+
+// Conditionally apply the google services plugin, depending on existence of the configuration file.
+// Also, add conditional source folders as source directories.
+// This is a workaround for not having conditional compilation in Java.
+if (new File(projectDir, 'google-services.json').exists()) {
+    apply plugin: 'com.google.gms.google-services'
+    android.sourceSets.main.java.srcDir { 'src/conditional/ga_enabled' }
+} else {
+    android.sourceSets.main.java.srcDir { 'src/conditional/ga_disabled' }
+}
+
+
 repositories {
     mavenCentral()
 }
@@ -69,6 +81,7 @@ dependencies {
     compile 'com.android.support:cardview-v7:22.2.1'
     compile 'com.android.support:recyclerview-v7:22.2.1'
     compile 'io.v:vanadium-android:0.1'
+    compile 'com.google.android.gms:play-services-analytics:8.3.0'
 }
 
 vdl {

@@ -5,11 +5,9 @@
 package io.v.android.apps.reader;
 
 import android.content.Intent;
-import android.content.pm.ActivityInfo;
 import android.net.Uri;
 import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
-import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.helper.ItemTouchHelper;
@@ -18,15 +16,13 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 
-import io.v.android.apps.reader.db.DB;
-
 /**
  * Activity that displays all the active device sets of this user.
  * <p/>
  * When the user clicks on one of the device sets, it starts the PdfViewerActivity with the file
  * associated with the device set.
  */
-public class DeviceSetChooserActivity extends AppCompatActivity {
+public class DeviceSetChooserActivity extends BaseReaderActivity {
 
     private static final String TAG = DeviceSetChooserActivity.class.getSimpleName();
 
@@ -35,17 +31,10 @@ public class DeviceSetChooserActivity extends AppCompatActivity {
     private RecyclerView mRecyclerView;
     private DeviceSetListAdapter mAdapter;
     private FloatingActionButton mButtonAddDeviceSet;
-    private DB mDB;
 
+    @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
-        // TODO(youngseokyoon): allow screen rotation and properly handle orientation changes
-        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
-
-        // Initialize the DB
-        mDB = DB.Singleton.get(this);
-        mDB.init(this);
 
         setContentView(R.layout.activity_device_set_chooser);
 
@@ -104,7 +93,7 @@ public class DeviceSetChooserActivity extends AppCompatActivity {
             public void onSwiped(RecyclerView.ViewHolder viewHolder, int direction) {
                 // Delete the device set on left swipe.
                 if (direction == ItemTouchHelper.LEFT) {
-                    mDB.deleteDeviceSet(
+                    getDB().deleteDeviceSet(
                             mAdapter.getDeviceSetId(viewHolder.getLayoutPosition()));
                 }
             }
@@ -149,7 +138,7 @@ public class DeviceSetChooserActivity extends AppCompatActivity {
         super.onActivityResult(requestCode, resultCode, data);
 
         Log.i(TAG, String.format("onActivityResult(%d, %d, data) called", requestCode, resultCode));
-        if (mDB.onActivityResult(requestCode, resultCode, data)) {
+        if (getDB().onActivityResult(requestCode, resultCode, data)) {
             return;
         }
 

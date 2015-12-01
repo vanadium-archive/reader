@@ -6,12 +6,10 @@ package io.v.android.apps.reader;
 
 import android.content.Context;
 import android.content.Intent;
-import android.content.pm.ActivityInfo;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.OpenableColumns;
-import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -21,6 +19,7 @@ import android.webkit.WebViewClient;
 import android.widget.Button;
 import android.widget.Toast;
 
+import com.google.android.gms.analytics.HitBuilders;
 import com.google.common.io.ByteStreams;
 
 import java.io.FileOutputStream;
@@ -29,9 +28,7 @@ import java.io.InputStream;
 import java.util.HashMap;
 import java.util.Map;
 
-import io.v.android.apps.reader.db.DB;
 import io.v.android.apps.reader.db.DB.DBList;
-import io.v.android.apps.reader.model.DeviceInfoFactory;
 import io.v.android.apps.reader.model.IdFactory;
 import io.v.android.apps.reader.model.Listener;
 import io.v.android.apps.reader.vdl.DeviceMeta;
@@ -41,10 +38,12 @@ import io.v.android.apps.reader.vdl.File;
 /**
  * Activity that shows the contents of the selected pdf file.
  */
-public class PdfViewerActivity extends AppCompatActivity {
+public class PdfViewerActivity extends BaseReaderActivity {
 
     private static final String TAG = PdfViewerActivity.class.getSimpleName();
 
+    // Category string used for Google Analytics tracking.
+    private static final String CATEGORY_PAGE_NAVIGATION = "Page Navigation";
     private static final String EXTRA_DEVICE_SET_ID = "device_set_id";
 
     private PdfViewWrapper mPdfView;
@@ -52,7 +51,6 @@ public class PdfViewerActivity extends AppCompatActivity {
     private Button mButtonNext;
     private MenuItem mMenuItemLinkPage;
 
-    private DB mDB;
     private DBList<DeviceSet> mDeviceSets;
     private DeviceSet mCurrentDS;
 
@@ -74,13 +72,6 @@ public class PdfViewerActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
-        // TODO(youngseokyoon): allow screen rotation and properly handle orientation changes
-        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
-
-        // Initialize the DB
-        mDB = DB.Singleton.get(this);
-        mDB.init(this);
 
         setContentView(R.layout.activity_pdf_viewer);
 
@@ -113,11 +104,11 @@ public class PdfViewerActivity extends AppCompatActivity {
          * Suppress the start process until the DB initialization is completed.
          * onStart() method will be called again after the user selects her blessings.
          */
-        if (!mDB.isInitialized()) {
+        if (!getDB().isInitialized()) {
             return;
         }
 
-        mDeviceSets = mDB.getDeviceSetList();
+        mDeviceSets = getDB().getDeviceSetList();
         mDeviceSets.setListener(new Listener() {
             @Override
             public void notifyItemChanged(int position) {
@@ -190,16 +181,16 @@ public class PdfViewerActivity extends AppCompatActivity {
         byte[] bytes = getBytesFromUri(fileUri);
 
         // Create a vdl File object representing this pdf file and put it in the db.
-        File vFile = mDB.storeBytes(bytes, getTitleFromUri(fileUri));
+        File vFile = getDB().storeBytes(bytes, getTitleFromUri(fileUri));
         Log.i(TAG, "vFile created: " + vFile);
         if (vFile == null) {
             Log.e(TAG, "Could not store the file content of Uri: " + fileUri.toString());
         }
-        mDB.addFile(vFile);
+        getDB().addFile(vFile);
 
         // Create a device set object and put it in the db.
         DeviceSet ds = createDeviceSet(vFile);
-        mDB.addDeviceSet(ds);
+        getDB().addDeviceSet(ds);
 
         // Join the device set.
         joinDeviceSet(ds);
@@ -237,22 +228,23 @@ public class PdfViewerActivity extends AppCompatActivity {
     }
 
     private void toggleLinkedState(boolean checked) {
+        sendAction(checked ? "Unlink Page" : "Link Page");
+
         DeviceMeta dm = getDeviceMeta();
         if (dm == null) {
             return;
         }
 
         dm.setLinked(!checked);
-        mDB.updateDeviceSet(mCurrentDS);
+        getDB().updateDeviceSet(mCurrentDS);
     }
 
     private DeviceMeta createDeviceMeta() {
-        String deviceId = DeviceInfoFactory.getDeviceId(this);
         int page = 1;
         int zoom = 1;
         boolean linked = true;
 
-        return new DeviceMeta(deviceId, page, zoom, linked);
+        return new DeviceMeta(getDeviceId(), page, zoom, linked);
     }
 
     private DeviceSet createDeviceSet(File vFile) {
@@ -266,8 +258,8 @@ public class PdfViewerActivity extends AppCompatActivity {
     private void joinDeviceSet(DeviceSet ds) {
         // Get the file contents from the database
         // TODO(youngseokyoon): get the blob asynchronously. right now, it's blocking the UI thread.
-        File file = mDB.getFileList().getItemById(ds.getFileId());
-        byte[] bytes = mDB.readBytes(file);
+        File file = getDB().getFileList().getItemById(ds.getFileId());
+        byte[] bytes = getDB().readBytes(file);
         if (bytes == null) {
             Toast.makeText(this, "Could not load the file contents.", Toast.LENGTH_LONG).show();
             return;
@@ -298,7 +290,7 @@ public class PdfViewerActivity extends AppCompatActivity {
         Log.i(TAG, "Joining device set: " + ds.getId());
         DeviceMeta dm = createDeviceMeta();
         ds.getDevices().put(dm.getDeviceId(), dm);
-        mDB.updateDeviceSet(ds);
+        getDB().updateDeviceSet(ds);
 
         mCurrentDS = ds;
     }
@@ -310,13 +302,13 @@ public class PdfViewerActivity extends AppCompatActivity {
 
         Log.i(TAG, "Leaving device set: " + mCurrentDS.getId());
         Map<String, DeviceMeta> devices = mCurrentDS.getDevices();
-        devices.remove(DeviceInfoFactory.getDeviceId(this));
+        devices.remove(getDeviceId());
 
         if (devices.isEmpty()) {
             Log.i(TAG, "Last one to leave the device set. Deleting " + mCurrentDS.getId());
-            mDB.deleteDeviceSet(mCurrentDS.getId());
+            getDB().deleteDeviceSet(mCurrentDS.getId());
         } else {
-            mDB.updateDeviceSet(mCurrentDS);
+            getDB().updateDeviceSet(mCurrentDS);
         }
 
         mCurrentDS = null;
@@ -358,19 +350,19 @@ public class PdfViewerActivity extends AppCompatActivity {
     }
 
     private DeviceMeta getDeviceMeta(DeviceSet ds) {
-        String deviceId = DeviceInfoFactory.getDeviceId(this);
-
-        if (ds == null || !ds.getDevices().containsKey(deviceId)) {
+        if (ds == null || !ds.getDevices().containsKey(getDeviceId())) {
             return null;
         }
 
-        return ds.getDevices().get(deviceId);
+        return ds.getDevices().get(getDeviceId());
     }
 
     /**
      * Move all the linked pages to their previous pages.
      */
     private void prevPage() {
+        sendAction("Previous Page");
+
         if (mCurrentDS == null || mPdfView.getPageCount() <= 0) {
             return;
         }
@@ -383,7 +375,7 @@ public class PdfViewerActivity extends AppCompatActivity {
                 dm.setPage(dm.getPage() - 1);
             }
 
-            mDB.updateDeviceSet(mCurrentDS);
+            getDB().updateDeviceSet(mCurrentDS);
             return;
         }
 
@@ -397,7 +389,7 @@ public class PdfViewerActivity extends AppCompatActivity {
                 dm.setPage(dm.getPage() - 1);
             }
 
-            mDB.updateDeviceSet(mCurrentDS);
+            getDB().updateDeviceSet(mCurrentDS);
         }
     }
 
@@ -405,6 +397,8 @@ public class PdfViewerActivity extends AppCompatActivity {
      * Move all the linked pages to their next pages.
      */
     private void nextPage() {
+        sendAction("Next Page");
+
         if (mCurrentDS == null || mPdfView.getPageCount() <= 0) {
             return;
         }
@@ -417,7 +411,7 @@ public class PdfViewerActivity extends AppCompatActivity {
                 dm.setPage(dm.getPage() + 1);
             }
 
-            mDB.updateDeviceSet(mCurrentDS);
+            getDB().updateDeviceSet(mCurrentDS);
             return;
         }
 
@@ -431,7 +425,7 @@ public class PdfViewerActivity extends AppCompatActivity {
                 dm.setPage(dm.getPage() + 1);
             }
 
-            mDB.updateDeviceSet(mCurrentDS);
+            getDB().updateDeviceSet(mCurrentDS);
         }
     }
 
@@ -478,6 +472,20 @@ public class PdfViewerActivity extends AppCompatActivity {
         return result;
     }
 
+    /**
+     * Send an event to the tracker with the given action string.
+     */
+    private void sendAction(String action) {
+        if (getTracker() != null) {
+            getTracker().send(new HitBuilders.EventBuilder()
+                    .setCustomDimension(1, Long.toString(System.currentTimeMillis()))
+                    .setCategory(CATEGORY_PAGE_NAVIGATION)
+                    .setAction(action)
+                    .setLabel(getDeviceId())
+                    .build());
+        }
+    }
+
     private static void handleException(Exception e) {
         Log.e(TAG, e.getMessage(), e);
     }
@@ -487,7 +495,7 @@ public class PdfViewerActivity extends AppCompatActivity {
         super.onActivityResult(requestCode, resultCode, data);
 
         Log.i(TAG, String.format("onActivityResult(%d, %d, data) called", requestCode, resultCode));
-        if (mDB.onActivityResult(requestCode, resultCode, data)) {
+        if (getDB().onActivityResult(requestCode, resultCode, data)) {
             return;
         }
 
