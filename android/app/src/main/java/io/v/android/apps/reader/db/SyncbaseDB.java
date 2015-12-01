@@ -69,6 +69,8 @@ import io.v.v23.verror.ExistException;
 import io.v.v23.verror.VException;
 import io.v.v23.vom.VomUtil;
 
+import static io.v.v23.VFutures.sync;
+
 /**
  * A class representing the syncbase instance.
  */
@@ -294,7 +296,7 @@ public class SyncbaseDB implements DB {
         );
 
         try {
-            group.create(mVContext, spec, new SyncgroupMemberInfo());
+            sync(group.create(mVContext, spec, new SyncgroupMemberInfo()));
             Log.i(TAG, "Syncgroup is created successfully.");
         } catch (ExistException e) {
             Log.i(TAG, "Syncgroup already exists.");
@@ -313,11 +315,11 @@ public class SyncbaseDB implements DB {
         Syncgroup group = mLocalSB.db.getSyncgroup(mSyncgroupName);
 
         try {
-            SyncgroupSpec spec = group.join(mVContext, new SyncgroupMemberInfo());
+            SyncgroupSpec spec = sync(group.join(mVContext, new SyncgroupMemberInfo()));
             Log.i(TAG, "Successfully joined the syncgroup!");
             Log.i(TAG, "Syncgroup spec: " + spec);
 
-            Map<String, SyncgroupMemberInfo> members = group.getMembers(mVContext);
+            Map<String, SyncgroupMemberInfo> members = sync(group.getMembers(mVContext));
             for (String memberName : members.keySet()) {
                 Log.i(TAG, "Member: " + memberName);
             }
@@ -335,7 +337,7 @@ public class SyncbaseDB implements DB {
     private void registerDevice() {
         try {
             Device thisDevice = DeviceInfoFactory.getDevice(mContext);
-            mLocalSB.devices.put(mVContext, thisDevice.getId(), thisDevice, Device.class);
+            sync(mLocalSB.devices.put(mVContext, thisDevice.getId(), thisDevice, Device.class));
             Log.i(TAG, "Registered this device to the syncbase table: " + thisDevice);
         } catch (VException e) {
             handleError("Could not register this device: " + e.getMessage());
@@ -353,8 +355,8 @@ public class SyncbaseDB implements DB {
         SyncbaseHierarchy result = new SyncbaseHierarchy();
 
         result.app = service.getApp(SYNCBASE_APP);
-        if (!result.app.exists(mVContext)) {
-            result.app.create(mVContext, mPermissions);
+        if (!sync(result.app.exists(mVContext))) {
+            sync(result.app.create(mVContext, mPermissions));
             Log.i(TAG, String.format(
                     "\"%s\" app is created at %s", result.app.name(), debugName));
         } else {
@@ -363,8 +365,8 @@ public class SyncbaseDB implements DB {
         }
 
         result.db = result.app.getNoSqlDatabase(SYNCBASE_DB, null);
-        if (!result.db.exists(mVContext)) {
-            result.db.create(mVContext, mPermissions);
+        if (!sync(result.db.exists(mVContext))) {
+            sync(result.db.create(mVContext, mPermissions));
             Log.i(TAG, String.format(
                     "\"%s\" db is created at %s", result.db.name(), debugName));
         } else {
@@ -373,8 +375,8 @@ public class SyncbaseDB implements DB {
         }
 
         result.files = result.db.getTable(TABLE_FILES);
-        if (!result.files.exists(mVContext)) {
-            result.files.create(mVContext, mPermissions);
+        if (!sync(result.files.exists(mVContext))) {
+            sync(result.files.create(mVContext, mPermissions));
             Log.i(TAG, String.format(
                     "\"%s\" table is created at %s", result.files.name(), debugName));
         } else {
@@ -383,8 +385,8 @@ public class SyncbaseDB implements DB {
         }
 
         result.devices = result.db.getTable(TABLE_DEVICES);
-        if (!result.devices.exists(mVContext)) {
-            result.devices.create(mVContext, mPermissions);
+        if (!sync(result.devices.exists(mVContext))) {
+            sync(result.devices.create(mVContext, mPermissions));
             Log.i(TAG, String.format(
                     "\"%s\" table is created at %s", result.devices.name(), debugName));
         } else {
@@ -393,8 +395,8 @@ public class SyncbaseDB implements DB {
         }
 
         result.deviceSets = result.db.getTable(TABLE_DEVICE_SETS);
-        if (!result.deviceSets.exists(mVContext)) {
-            result.deviceSets.create(mVContext, mPermissions);
+        if (!sync(result.deviceSets.exists(mVContext))) {
+            sync(result.deviceSets.create(mVContext, mPermissions));
             Log.i(TAG, String.format(
                     "\"%s\" table is created at %s", result.deviceSets.name(), debugName));
         } else {
@@ -451,7 +453,7 @@ public class SyncbaseDB implements DB {
     @Override
     public void addFile(File file) {
         try {
-            mLocalSB.files.put(mVContext, file.getId(), file, File.class);
+            sync(mLocalSB.files.put(mVContext, file.getId(), file, File.class));
         } catch (VException e) {
             handleError("Failed to add the file(" + file + "): " + e.getMessage());
         }
@@ -460,7 +462,7 @@ public class SyncbaseDB implements DB {
     @Override
     public void deleteFile(String id) {
         try {
-            mLocalSB.files.delete(mVContext, id);
+            sync(mLocalSB.files.delete(mVContext, id));
         } catch (VException e) {
             handleError("Failed to delete the file with id " + id + ": " + e.getMessage());
         }
@@ -469,7 +471,7 @@ public class SyncbaseDB implements DB {
     @Override
     public void addDeviceSet(DeviceSet ds) {
         try {
-            mLocalSB.deviceSets.put(mVContext, ds.getId(), ds, DeviceSet.class);
+            sync(mLocalSB.deviceSets.put(mVContext, ds.getId(), ds, DeviceSet.class));
         } catch (VException e) {
             handleError("Failed to add the device set(" + ds + "): " + e.getMessage());
         }
@@ -478,7 +480,7 @@ public class SyncbaseDB implements DB {
     @Override
     public void updateDeviceSet(DeviceSet ds) {
         try {
-            mLocalSB.deviceSets.put(mVContext, ds.getId(), ds, DeviceSet.class);
+            sync(mLocalSB.deviceSets.put(mVContext, ds.getId(), ds, DeviceSet.class));
         } catch (VException e) {
             handleError("Failed to update the device set(" + ds + "): " + e.getMessage());
         }
@@ -487,7 +489,7 @@ public class SyncbaseDB implements DB {
     @Override
     public void deleteDeviceSet(String id) {
         try {
-            mLocalSB.deviceSets.delete(mVContext, id);
+            sync(mLocalSB.deviceSets.delete(mVContext, id));
         } catch (VException e) {
             handleError("Failed to delete the device set with id " + id + ": " + e.getMessage());
         }
@@ -498,12 +500,12 @@ public class SyncbaseDB implements DB {
         // In case of Syncbase DB, store the bytes as a blob.
         // TODO(youngseokyoon): check if the same blob is already in the database.
         try {
-            BlobWriter writer = mLocalSB.db.writeBlob(mVContext, null);
-            OutputStream out = writer.stream(mVContext);
+            BlobWriter writer = sync(mLocalSB.db.writeBlob(mVContext, null));
+            OutputStream out = sync(writer.stream(mVContext));
             out.write(bytes);
             out.close();
 
-            writer.commit(mVContext);
+            sync(writer.commit(mVContext));
 
             BlobRef ref = writer.getRef();
 
@@ -529,7 +531,7 @@ public class SyncbaseDB implements DB {
 
         try {
             BlobReader reader = mLocalSB.db.readBlob(mVContext, file.getRef());
-            return ByteStreams.toByteArray(reader.stream(mVContext, 0L));
+            return ByteStreams.toByteArray(sync(reader.stream(mVContext, 0L)));
         } catch (VException | IOException e) {
             handleError("Could not read the blob " + file.getRef().toString()
                     + ": " + e.getMessage());
@@ -642,12 +644,13 @@ public class SyncbaseDB implements DB {
             try {
                 Log.i(TAG, "Reading initial data from table: " + mTableName);
 
-                BatchDatabase batch = mLocalSB.db.beginBatch(
-                        mCancelableVContext, new BatchOptions("fetch", true));
+                BatchDatabase batch = sync(mLocalSB.db.beginBatch(
+                        mCancelableVContext, new BatchOptions("fetch", true)));
 
                 // Read existing data from the table.
                 Table table = batch.getTable(mTableName);
-                VIterable<KeyValue> kvs = table.scan(mCancelableVContext, RowRange.range("", ""));
+                VIterable<KeyValue> kvs = sync(table.scan(
+                        mCancelableVContext, RowRange.range("", "")));
                 for (KeyValue kv : kvs) {
                     @SuppressWarnings("unchecked")
                     E item = (E) VomUtil.decode(kv.getValue(), mClass);
@@ -655,9 +658,9 @@ public class SyncbaseDB implements DB {
                 }
 
                 // Remember this resume marker for the watch call.
-                mResumeMarker = batch.getResumeMarker(mVContext);
+                mResumeMarker = sync(batch.getResumeMarker(mVContext));
 
-                batch.abort(mCancelableVContext);
+                sync(batch.abort(mCancelableVContext));
 
                 Log.i(TAG, "Done reading initial data from table: " + mTableName);
             } catch (Exception e) {
@@ -668,8 +671,8 @@ public class SyncbaseDB implements DB {
         private void watchForChanges() {
             try {
                 // Watch for new changes coming from other Syncbase peers.
-                VIterable<WatchChange> watchStream = mLocalSB.db.watch(
-                        mCancelableVContext, mTableName, "", mResumeMarker);
+                VIterable<WatchChange> watchStream = sync(mLocalSB.db.watch(
+                        mCancelableVContext, mTableName, "", mResumeMarker));
 
                 Log.i(TAG, "Watching for changes of table: " + mTableName + "...");
 
