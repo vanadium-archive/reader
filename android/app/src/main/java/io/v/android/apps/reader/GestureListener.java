@@ -4,12 +4,17 @@
 
 package io.v.android.apps.reader;
 
+import android.util.Log;
 import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
+import android.content.Context;
 
-import com.google.android.gms.analytics.HitBuilders;
-import com.google.android.gms.analytics.Tracker;
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.File;
+import java.io.IOException;
+import java.sql.Timestamp;
 
 /**
  * Gesture listener implementation for sending gesture events to the Google Analytics tracker.
@@ -18,23 +23,50 @@ import com.google.android.gms.analytics.Tracker;
 public class GestureListener implements GestureDetector.OnGestureListener,
         GestureDetector.OnDoubleTapListener, ScaleGestureDetector.OnScaleGestureListener {
 
+    private static final String TAG = GestureListener.class.getSimpleName();
     private static final String CATEGORY = "Touch Gesture";
+    private static BufferedWriter buffer;
 
-    private final Tracker mTracker;
-    private final String mLabel;
+    private final String mDeviceId;
 
-    public GestureListener(Tracker tracker, String label) {
-        mTracker = tracker;
-        mLabel = label;
+    public GestureListener(Context context, String deviceId) {
+        mDeviceId = deviceId;
+
+        if (buffer == null) {
+            File directory = context.getFilesDir();
+            String basename = String.format("reader-%s.log", now());
+            File file = new File(directory, basename);
+
+            try {
+                buffer = new BufferedWriter(new FileWriter(file));
+                buffer.write("DEVICE ID");
+                buffer.write(",");
+                buffer.write("ACTION");
+                buffer.write(",");
+                buffer.write("TIMESTAMP");
+                buffer.newLine();
+                buffer.flush();
+            } catch (IOException e) {
+                handleException(e);
+            }
+        }
     }
 
     private void send(String action) {
-        mTracker.send(new HitBuilders.EventBuilder()
-                .setCustomDimension(1, Long.toString(System.currentTimeMillis()))
-                .setCategory(CATEGORY)
-                .setAction(action)
-                .setLabel(mLabel)
-                .build());
+        try {
+            buffer.write(mDeviceId);
+            buffer.write(",");
+            buffer.write(action);
+            buffer.write(",");
+            buffer.write(now().toString());
+            buffer.newLine();
+        } catch (IOException e) {
+            handleException(e);
+        }
+    }
+
+    private Timestamp now() {
+        return new Timestamp(System.currentTimeMillis());
     }
 
     @Override
@@ -104,5 +136,9 @@ public class GestureListener implements GestureDetector.OnGestureListener,
     @Override
     public void onScaleEnd(ScaleGestureDetector detector) {
         send("ScaleEnd");
+    }
+
+    private static void handleException(Exception e) {
+        Log.e(TAG, e.getMessage(), e);
     }
 }

@@ -71,15 +71,9 @@ public abstract class BaseReaderActivity extends AppCompatActivity {
     }
 
     private void initTracker() {
-        // Obtain the shared Tracker instance.
-        ReaderApplication application = (ReaderApplication) getApplication();
-        mTracker = application.getDefaultTracker();
-
-        if (mTracker != null) {
-            mGestureListener = new GestureListener(mTracker, DeviceInfoFactory.getDeviceId(this));
-            mGestureDetector = new GestureDetectorCompat(this, mGestureListener);
-            mGestureDetector.setOnDoubleTapListener(mGestureListener);
-        }
+        mGestureListener = new GestureListener(this, DeviceInfoFactory.getDeviceId(this));
+        mGestureDetector = new GestureDetectorCompat(this, mGestureListener);
+        mGestureDetector.setOnDoubleTapListener(mGestureListener);
     }
 
     @Override
@@ -93,4 +87,5 @@ public abstract class BaseReaderActivity extends AppCompatActivity {
 
         return super.dispatchTouchEvent(ev);
     }
+
 }
