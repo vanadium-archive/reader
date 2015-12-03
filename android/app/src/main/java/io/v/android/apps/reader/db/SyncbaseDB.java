@@ -35,6 +35,7 @@ import io.v.android.v23.services.blessing.BlessingCreationException;
 import io.v.android.v23.services.blessing.BlessingService;
 import io.v.impl.google.naming.NamingUtil;
 import io.v.impl.google.services.syncbase.SyncbaseServer;
+import io.v.v23.InputChannels;
 import io.v.v23.VIterable;
 import io.v.v23.context.CancelableVContext;
 import io.v.v23.context.VContext;
@@ -649,8 +650,8 @@ public class SyncbaseDB implements DB {
 
                 // Read existing data from the table.
                 Table table = batch.getTable(mTableName);
-                VIterable<KeyValue> kvs = sync(table.scan(
-                        mCancelableVContext, RowRange.range("", "")));
+                VIterable<KeyValue> kvs = InputChannels.asIterable(sync(table.scan(
+                        mCancelableVContext, RowRange.range("", ""))));
                 for (KeyValue kv : kvs) {
                     @SuppressWarnings("unchecked")
                     E item = (E) VomUtil.decode(kv.getValue(), mClass);
@@ -671,8 +672,8 @@ public class SyncbaseDB implements DB {
         private void watchForChanges() {
             try {
                 // Watch for new changes coming from other Syncbase peers.
-                VIterable<WatchChange> watchStream = sync(mLocalSB.db.watch(
-                        mCancelableVContext, mTableName, "", mResumeMarker));
+                VIterable<WatchChange> watchStream = InputChannels.asIterable(sync(
+                        mLocalSB.db.watch(mCancelableVContext, mTableName, "", mResumeMarker)));
 
                 Log.i(TAG, "Watching for changes of table: " + mTableName + "...");
 
