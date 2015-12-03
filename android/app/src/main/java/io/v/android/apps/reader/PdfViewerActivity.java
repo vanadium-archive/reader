@@ -125,7 +125,9 @@ public class PdfViewerActivity extends BaseReaderActivity {
 
                 DeviceMeta dm = getDeviceMeta();
                 mPdfView.setPage(dm.getPage());
-                mMenuItemLinkPage.setChecked(dm.getLinked());
+                if (mMenuItemLinkPage != null) {
+                    mMenuItemLinkPage.setChecked(dm.getLinked());
+                }
             }
 
             @Override
