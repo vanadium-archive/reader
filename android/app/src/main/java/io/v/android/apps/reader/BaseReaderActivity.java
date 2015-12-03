@@ -24,6 +24,7 @@ public abstract class BaseReaderActivity extends AppCompatActivity {
     private String mDeviceId;
     private DB mDB;
     private Tracker mTracker;
+    private UserActionLogger mLogger;
     private GestureDetectorCompat mGestureDetector;
     private GestureListener mGestureListener;
 
@@ -33,6 +34,10 @@ public abstract class BaseReaderActivity extends AppCompatActivity {
 
     protected Tracker getTracker() {
         return mTracker;
+    }
+
+    protected UserActionLogger getLogger() {
+        return mLogger;
     }
 
     protected String getDeviceId() {
@@ -71,7 +76,9 @@ public abstract class BaseReaderActivity extends AppCompatActivity {
     }
 
     private void initTracker() {
-        mGestureListener = new GestureListener(this, DeviceInfoFactory.getDeviceId(this));
+        // TODO(youngseokyoon): consolidate the Tracker into UserActionLogger
+        mLogger = UserActionLogger.getInstance(this);
+        mGestureListener = new GestureListener(this);
         mGestureDetector = new GestureDetectorCompat(this, mGestureListener);
         mGestureDetector.setOnDoubleTapListener(mGestureListener);
     }

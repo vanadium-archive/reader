@@ -228,7 +228,7 @@ public class PdfViewerActivity extends BaseReaderActivity {
     }
 
     private void toggleLinkedState(boolean checked) {
-        sendAction(checked ? "Unlink Page" : "Link Page");
+        writeAction(checked ? "Unlink Page" : "Link Page");
 
         DeviceMeta dm = getDeviceMeta();
         if (dm == null) {
@@ -361,7 +361,7 @@ public class PdfViewerActivity extends BaseReaderActivity {
      * Move all the linked pages to their previous pages.
      */
     private void prevPage() {
-        sendAction("Previous Page");
+        writeAction("Previous Page");
 
         if (mCurrentDS == null || mPdfView.getPageCount() <= 0) {
             return;
@@ -397,7 +397,7 @@ public class PdfViewerActivity extends BaseReaderActivity {
      * Move all the linked pages to their next pages.
      */
     private void nextPage() {
-        sendAction("Next Page");
+        writeAction("Next Page");
 
         if (mCurrentDS == null || mPdfView.getPageCount() <= 0) {
             return;
@@ -475,7 +475,7 @@ public class PdfViewerActivity extends BaseReaderActivity {
     /**
      * Send an event to the tracker with the given action string.
      */
-    private void sendAction(String action) {
+    private void writeAction(String action) {
         if (getTracker() != null) {
             getTracker().send(new HitBuilders.EventBuilder()
                     .setCustomDimension(1, Long.toString(System.currentTimeMillis()))
@@ -483,6 +483,10 @@ public class PdfViewerActivity extends BaseReaderActivity {
                     .setAction(action)
                     .setLabel(getDeviceId())
                     .build());
+        }
+
+        if (getLogger() != null) {
+            getLogger().writeAction(action);
         }
     }
 
