@@ -74,6 +74,10 @@ android {
             universalApk false
         }
     }
+    packagingOptions {
+        exclude 'META-INF/NOTICE.txt'
+        exclude 'META-INF/LICENSE.txt'
+    }
 }
 
 dependencies {
@@ -84,6 +88,7 @@ dependencies {
     compile 'com.android.support:recyclerview-v7:22.2.1'
     compile 'io.v:vanadium-android:0.3'
     compile 'com.google.android.gms:play-services-analytics:8.3.0'
+    compile 'org.apache.commons:commons-csv:1.2'
 }
 
 vdl {

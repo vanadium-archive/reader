@@ -24,70 +24,70 @@ public class GestureListener implements GestureDetector.OnGestureListener,
 
     @Override
     public boolean onDown(MotionEvent e) {
-        mLogger.writeAction("Down");
+        mLogger.writeTouchAction("Down");
         return true;
     }
 
     @Override
     public void onShowPress(MotionEvent e) {
-        mLogger.writeAction("ShowPress");
+        mLogger.writeTouchAction("ShowPress");
     }
 
     @Override
     public boolean onSingleTapUp(MotionEvent e) {
-        mLogger.writeAction("SingleTapUp");
+        mLogger.writeTouchAction("SingleTapUp");
         return true;
     }
 
     @Override
     public boolean onScroll(MotionEvent e1, MotionEvent e2, float distanceX, float distanceY) {
-        mLogger.writeAction("Scroll");
+        mLogger.writeTouchAction("Scroll");
         return true;
     }
 
     @Override
     public void onLongPress(MotionEvent e) {
-        mLogger.writeAction("LongPress");
+        mLogger.writeTouchAction("LongPress");
     }
 
     @Override
     public boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX, float velocityY) {
-        mLogger.writeAction("Fling");
+        mLogger.writeTouchAction("Fling");
         return true;
     }
 
     @Override
     public boolean onSingleTapConfirmed(MotionEvent e) {
-        mLogger.writeAction("SingleTapConfirmed");
+        mLogger.writeTouchAction("SingleTapConfirmed");
         return true;
     }
 
     @Override
     public boolean onDoubleTap(MotionEvent e) {
-        mLogger.writeAction("DoubleTap");
+        mLogger.writeTouchAction("DoubleTap");
         return true;
     }
 
     @Override
     public boolean onDoubleTapEvent(MotionEvent e) {
-        mLogger.writeAction("DoubleTapEvent");
+        mLogger.writeTouchAction("DoubleTapEvent");
         return true;
     }
 
     @Override
     public boolean onScale(ScaleGestureDetector detector) {
-        mLogger.writeAction("Scale");
+        mLogger.writeTouchAction("Scale");
         return true;
     }
 
     @Override
     public boolean onScaleBegin(ScaleGestureDetector detector) {
-        mLogger.writeAction("ScaleBegin");
+        mLogger.writeTouchAction("ScaleBegin");
         return true;
     }
 
     @Override
     public void onScaleEnd(ScaleGestureDetector detector) {
-        mLogger.writeAction("ScaleEnd");
+        mLogger.writeTouchAction("ScaleEnd");
     }
 }

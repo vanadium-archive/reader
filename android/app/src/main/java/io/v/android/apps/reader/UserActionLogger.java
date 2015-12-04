@@ -8,7 +8,10 @@ import android.content.Context;
 import android.os.Environment;
 import android.util.Log;
 
-import java.io.BufferedWriter;
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVPrinter;
+
+import java.io.Closeable;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -21,15 +24,20 @@ import io.v.android.apps.reader.model.DeviceInfoFactory;
 /**
  * A utility class for logging user actions, such as touch gestures and button presses.
  * Writes the user actions into a CSV file.
+ *
+ * This class implements {@link Closeable} interface, but closing this logger is not necessary to
+ * get the full logs, because the log printing streams are flushed right after each row is written.
  */
-public class UserActionLogger {
+public class UserActionLogger implements Closeable {
 
     private static final String TAG = GestureListener.class.getSimpleName();
 
     private static volatile UserActionLogger instance;
 
     private String mDeviceId;
-    private BufferedWriter mWriter;
+
+    private CSVPrinter mTouchPrinter;
+    private CSVPrinter mNavigationPrinter;
 
     /**
      * Singleton accessor of the UserActionLogger class.
@@ -53,10 +61,9 @@ public class UserActionLogger {
 
         // Use an app-independent files directory to avoid accidentally deleting log
         // files by clearing the app data.
-        File directory = Environment.getExternalStoragePublicDirectory(
-                Environment.DIRECTORY_DOCUMENTS);
-        if (!directory.exists()) {
-            directory.mkdirs();
+        File dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS);
+        if (!dir.exists()) {
+            dir.mkdirs();
         }
 
         // Avoid having colons in the start timestamp
@@ -64,45 +71,101 @@ public class UserActionLogger {
                 "yyyyMMdd-HHmmss.SSS", Locale.getDefault());
         String startTime = formatter.format(new Date());
 
-        String basename = String.format("reader-%s.log", startTime);
-        File file = new File(directory, basename);
-
+        File touchLogFile = new File(dir,
+                String.format("reader-%s-touch-%s.log", mDeviceId, startTime));
+        File navigationLogFile = new File(dir,
+                String.format("reader-%s-navigation-%s.log", mDeviceId, startTime));
         try {
-            mWriter = new BufferedWriter(new FileWriter(file));
-            mWriter.write("DEVICE ID");
-            mWriter.write(",");
-            mWriter.write("ACTION");
-            mWriter.write(",");
-            mWriter.write("TIMESTAMP");
-            mWriter.newLine();
-            mWriter.flush();
+            mTouchPrinter = CSVFormat.DEFAULT
+                    .withHeader("ACTION", "TIMESTAMP")
+                    .print(new FileWriter(touchLogFile));
+
+            mNavigationPrinter = CSVFormat.DEFAULT
+                    .withHeader("ACTION", "VALUE", "TIMESTAMP")
+                    .print(new FileWriter(navigationLogFile));
         } catch (IOException e) {
             handleException(e);
-            mWriter = null;
+
+            try {
+                close();
+            } catch (IOException e2) {
+                // Nothing to do here.
+            }
+        }
+    }
+
+    @Override
+    public void close() throws IOException {
+        IOException ex = null;
+
+        if (mTouchPrinter != null) {
+            try {
+                mTouchPrinter.close();
+            } catch (IOException e) {
+                ex = e;
+            } finally {
+                mTouchPrinter = null;
+            }
+        }
+
+        if (mNavigationPrinter != null) {
+            try {
+                mNavigationPrinter.close();
+            } catch (IOException e) {
+                if (ex != null) {
+                    ex.addSuppressed(e);
+                } else {
+                    ex = e;
+                }
+            } finally {
+                mNavigationPrinter = null;
+            }
+        }
+
+        if (ex != null) {
+            throw ex;
         }
     }
 
     /**
-     * Writes the given action to the CSV file.
+     * Writes the given touch action to the CSV file.
      *
-     * @param action name of the user action.
+     * @param action name of the touch action.
      */
-    public synchronized void writeAction(String action) {
-        if (mWriter == null) {
+    public void writeTouchAction(String action) {
+        if (mTouchPrinter == null) {
             return;
         }
 
         try {
-            mWriter.write(mDeviceId);
-            mWriter.write(",");
-            mWriter.write(action);
-            mWriter.write(",");
-            mWriter.write(Long.toString(System.currentTimeMillis()));
-            mWriter.newLine();
-            mWriter.flush();
+            mTouchPrinter.printRecord(action, timestamp());
+            mTouchPrinter.flush();
         } catch (IOException e) {
             handleException(e);
         }
+    }
+
+    /**
+     * Writes the given navigation action to the CSV file.
+     *
+     * @param action name of the navigation action.
+     * @param value the value associated with the action.
+     */
+    public void writeNavigationAction(String action, int value) {
+        if (mNavigationPrinter == null) {
+            return;
+        }
+
+        try {
+            mNavigationPrinter.printRecord(action, value, timestamp());
+            mNavigationPrinter.flush();
+        } catch (IOException e) {
+            handleException(e);
+        }
+    }
+
+    private String timestamp() {
+        return Long.toString(System.currentTimeMillis());
     }
 
     private static void handleException(Exception e) {

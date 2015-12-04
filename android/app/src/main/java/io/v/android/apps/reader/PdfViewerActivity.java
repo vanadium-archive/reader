@@ -121,12 +121,18 @@ public class PdfViewerActivity extends BaseReaderActivity {
                     return;
                 }
 
-                mCurrentDS = changed;
+                int oldPage = getPage();
+                mCurrentDS = cloneDeviceSet(changed);
+                int newPage = getPage();
 
-                DeviceMeta dm = getDeviceMeta();
-                mPdfView.setPage(dm.getPage());
-                if (mMenuItemLinkPage != null) {
-                    mMenuItemLinkPage.setChecked(dm.getLinked());
+                if (oldPage != newPage) {
+                    DeviceMeta dm = getDeviceMeta();
+                    mPdfView.setPage(dm.getPage());
+                    if (mMenuItemLinkPage != null) {
+                        mMenuItemLinkPage.setChecked(dm.getLinked());
+                    }
+
+                    writeNavigationAction("Page Changed", newPage);
                 }
             }
 
@@ -176,6 +182,32 @@ public class PdfViewerActivity extends BaseReaderActivity {
             Uri uri = intent.getParcelableExtra(Intent.EXTRA_STREAM);
             createAndJoinDeviceSet(uri);
         }
+    }
+
+    // TODO(youngseokyoon): generalize these clone methods
+    private DeviceSet cloneDeviceSet(DeviceSet ds) {
+        if (ds == null) {
+            return null;
+        }
+
+        Map<String, DeviceMeta> devicesCopy = null;
+        if (ds.getDevices() != null) {
+            devicesCopy = new HashMap<>();
+            for (Map.Entry<String, DeviceMeta> entry : ds.getDevices().entrySet()) {
+                devicesCopy.put(entry.getKey(), cloneDeviceMeta(entry.getValue()));
+            }
+        }
+
+        return new DeviceSet(ds.getId(), ds.getFileId(), devicesCopy);
+    }
+
+    // TODO(youngseokyoon): generalize these clone methods
+    private DeviceMeta cloneDeviceMeta(DeviceMeta dm) {
+        if (dm == null) {
+            return null;
+        }
+
+        return new DeviceMeta(dm.getDeviceId(), dm.getPage(), dm.getZoom(), dm.getLinked());
     }
 
     private void createAndJoinDeviceSet(Uri fileUri) {
@@ -230,7 +262,7 @@ public class PdfViewerActivity extends BaseReaderActivity {
     }
 
     private void toggleLinkedState(boolean checked) {
-        writeAction(checked ? "Unlink Page" : "Link Page");
+        writeNavigationAction(checked ? "Unlink Page" : "Link Page");
 
         DeviceMeta dm = getDeviceMeta();
         if (dm == null) {
@@ -285,6 +317,8 @@ public class PdfViewerActivity extends BaseReaderActivity {
             public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
                 mPdfView.loadPdfFile(jFile.getPath());
+
+                writeNavigationAction("Page Changed", 1);
             }
         });
 
@@ -352,37 +386,48 @@ public class PdfViewerActivity extends BaseReaderActivity {
     }
 
     private DeviceMeta getDeviceMeta(DeviceSet ds) {
-        if (ds == null || !ds.getDevices().containsKey(getDeviceId())) {
+        if (ds == null) {
             return null;
         }
 
         return ds.getDevices().get(getDeviceId());
     }
 
+    private int getPage() {
+        DeviceMeta dm = getDeviceMeta();
+        if (dm == null) {
+            return 0;
+        }
+
+        return dm.getPage();
+    }
+
     /**
      * Move all the linked pages to their previous pages.
      */
     private void prevPage() {
-        writeAction("Previous Page");
+        writeNavigationAction("Previous Page");
 
         if (mCurrentDS == null || mPdfView.getPageCount() <= 0) {
             return;
         }
 
+        DeviceSet ds = cloneDeviceSet(mCurrentDS);
+
         // First, check if this device is linked or not.
         // If not, simply move the page of the current device.
-        if (!getDeviceMeta().getLinked()) {
-            DeviceMeta dm = getDeviceMeta();
+        if (!getDeviceMeta(ds).getLinked()) {
+            DeviceMeta dm = getDeviceMeta(ds);
             if (dm.getPage() > 1) {
                 dm.setPage(dm.getPage() - 1);
             }
 
-            getDB().updateDeviceSet(mCurrentDS);
+            getDB().updateDeviceSet(ds);
             return;
         }
 
         // Move all the linked pages
-        Map<String, DeviceMeta> linkedDevices = getLinkedDevices();
+        Map<String, DeviceMeta> linkedDevices = getLinkedDevices(ds);
         int smallestPage = getSmallestPage(linkedDevices);
 
         if (smallestPage > 1) {
@@ -391,7 +436,7 @@ public class PdfViewerActivity extends BaseReaderActivity {
                 dm.setPage(dm.getPage() - 1);
             }
 
-            getDB().updateDeviceSet(mCurrentDS);
+            getDB().updateDeviceSet(ds);
         }
     }
 
@@ -399,26 +444,28 @@ public class PdfViewerActivity extends BaseReaderActivity {
      * Move all the linked pages to their next pages.
      */
     private void nextPage() {
-        writeAction("Next Page");
+        writeNavigationAction("Next Page");
 
         if (mCurrentDS == null || mPdfView.getPageCount() <= 0) {
             return;
         }
 
+        DeviceSet ds = cloneDeviceSet(mCurrentDS);
+
         // First, check if this device is linked or not.
         // If not, simply move the page of the current device.
-        if (!getDeviceMeta().getLinked()) {
-            DeviceMeta dm = getDeviceMeta();
+        if (!getDeviceMeta(ds).getLinked()) {
+            DeviceMeta dm = getDeviceMeta(ds);
             if (dm.getPage() < mPdfView.getPageCount()) {
                 dm.setPage(dm.getPage() + 1);
             }
 
-            getDB().updateDeviceSet(mCurrentDS);
+            getDB().updateDeviceSet(ds);
             return;
         }
 
         // Move all the linked pages
-        Map<String, DeviceMeta> linkedDevices = getLinkedDevices();
+        Map<String, DeviceMeta> linkedDevices = getLinkedDevices(ds);
         int largestPage = getLargestPage(linkedDevices);
 
         if (largestPage < mPdfView.getPageCount()) {
@@ -427,16 +474,16 @@ public class PdfViewerActivity extends BaseReaderActivity {
                 dm.setPage(dm.getPage() + 1);
             }
 
-            getDB().updateDeviceSet(mCurrentDS);
+            getDB().updateDeviceSet(ds);
         }
     }
 
-    private Map<String, DeviceMeta> getLinkedDevices() {
-        if (mCurrentDS == null) {
+    private Map<String, DeviceMeta> getLinkedDevices(DeviceSet ds) {
+        if (ds == null) {
             return null;
         }
 
-        Map<String, DeviceMeta> devices = mCurrentDS.getDevices();
+        Map<String, DeviceMeta> devices = ds.getDevices();
         Map<String, DeviceMeta> result = new HashMap<>();
         for (String deviceId : devices.keySet()) {
             DeviceMeta dm = devices.get(deviceId);
@@ -475,12 +522,20 @@ public class PdfViewerActivity extends BaseReaderActivity {
     }
 
     /**
-     * Send an event to the tracker with the given action string.
+     * Log a navigation event to the available trackers.
      */
-    private void writeAction(String action) {
+    private void writeNavigationAction(String action) {
+        writeNavigationAction(action, 0);
+    }
+
+    /**
+     * Log a navigation event to the available trackers.
+     */
+    private void writeNavigationAction(String action, int value) {
         if (getTracker() != null) {
             getTracker().send(new HitBuilders.EventBuilder()
                     .setCustomDimension(1, Long.toString(System.currentTimeMillis()))
+                    .setCustomDimension(2, Integer.toString(value))
                     .setCategory(CATEGORY_PAGE_NAVIGATION)
                     .setAction(action)
                     .setLabel(getDeviceId())
@@ -488,7 +543,7 @@ public class PdfViewerActivity extends BaseReaderActivity {
         }
 
         if (getLogger() != null) {
-            getLogger().writeAction(action);
+            getLogger().writeNavigationAction(action, value);
         }
     }
 
