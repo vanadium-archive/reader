@@ -66,6 +66,8 @@ public class UserActionLogger implements Closeable {
             dir.mkdirs();
         }
 
+        Log.i(TAG, "User action logs are saved at: " + dir.getAbsolutePath());
+
         // Avoid having colons in the start timestamp
         SimpleDateFormat formatter = new SimpleDateFormat(
                 "yyyyMMdd-HHmmss.SSS", Locale.getDefault());
