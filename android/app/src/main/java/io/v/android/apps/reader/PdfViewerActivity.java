@@ -121,18 +121,19 @@ public class PdfViewerActivity extends BaseReaderActivity {
                     return;
                 }
 
+                DeviceMeta dm = getDeviceMeta();
+
                 int oldPage = getPage();
                 mCurrentDS = cloneDeviceSet(changed);
                 int newPage = getPage();
 
                 if (oldPage != newPage) {
-                    DeviceMeta dm = getDeviceMeta();
                     mPdfView.setPage(dm.getPage());
-                    if (mMenuItemLinkPage != null) {
-                        mMenuItemLinkPage.setChecked(dm.getLinked());
-                    }
-
                     writeNavigationAction("Page Changed", newPage);
+                }
+
+                if (mMenuItemLinkPage != null) {
+                    mMenuItemLinkPage.setChecked(dm.getLinked());
                 }
             }
 
