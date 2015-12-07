@@ -121,11 +121,11 @@ public class PdfViewerActivity extends BaseReaderActivity {
                     return;
                 }
 
-                DeviceMeta dm = getDeviceMeta();
-
                 int oldPage = getPage();
                 mCurrentDS = cloneDeviceSet(changed);
                 int newPage = getPage();
+
+                DeviceMeta dm = getDeviceMeta();
 
                 if (oldPage != newPage) {
                     mPdfView.setPage(dm.getPage());
