@@ -7,7 +7,6 @@ package io.v.android.apps.reader;
 import android.content.pm.ActivityInfo;
 import android.os.Bundle;
 import android.support.v4.view.GestureDetectorCompat;
-import android.support.v7.app.AppCompatActivity;
 import android.view.MotionEvent;
 
 import com.google.android.gms.analytics.HitBuilders;
@@ -15,12 +14,13 @@ import com.google.android.gms.analytics.Tracker;
 
 import io.v.android.apps.reader.db.DB;
 import io.v.android.apps.reader.model.DeviceInfoFactory;
+import io.v.baku.toolkit.VAppCompatActivity;
 
 /**
  * Base activity class for all the Reader app activities. Its responsibilities include DB
  * initialization, touch gesture detection, and google analytics tracking
  */
-public abstract class BaseReaderActivity extends AppCompatActivity {
+public abstract class BaseReaderActivity extends VAppCompatActivity {
     private String mDeviceId;
     private DB mDB;
     private Tracker mTracker;
