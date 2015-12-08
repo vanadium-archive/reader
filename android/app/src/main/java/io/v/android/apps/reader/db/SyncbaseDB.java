@@ -502,7 +502,7 @@ public class SyncbaseDB implements DB {
         // TODO(youngseokyoon): check if the same blob is already in the database.
         try {
             BlobWriter writer = sync(mLocalSB.db.writeBlob(mVContext, null));
-            OutputStream out = sync(writer.stream(mVContext));
+            OutputStream out = writer.stream(mVContext);
             out.write(bytes);
             out.close();
 
@@ -532,7 +532,7 @@ public class SyncbaseDB implements DB {
 
         try {
             BlobReader reader = mLocalSB.db.readBlob(mVContext, file.getRef());
-            return ByteStreams.toByteArray(sync(reader.stream(mVContext, 0L)));
+            return ByteStreams.toByteArray(reader.stream(mVContext, 0L));
         } catch (VException | IOException e) {
             handleError("Could not read the blob " + file.getRef().toString()
                     + ": " + e.getMessage());
@@ -650,8 +650,8 @@ public class SyncbaseDB implements DB {
 
                 // Read existing data from the table.
                 Table table = batch.getTable(mTableName);
-                VIterable<KeyValue> kvs = InputChannels.asIterable(sync(table.scan(
-                        mCancelableVContext, RowRange.range("", ""))));
+                VIterable<KeyValue> kvs = InputChannels.asIterable(
+                        table.scan(mCancelableVContext, RowRange.range("", "")));
                 for (KeyValue kv : kvs) {
                     @SuppressWarnings("unchecked")
                     E item = (E) VomUtil.decode(kv.getValue(), mClass);
@@ -672,8 +672,8 @@ public class SyncbaseDB implements DB {
         private void watchForChanges() {
             try {
                 // Watch for new changes coming from other Syncbase peers.
-                VIterable<WatchChange> watchStream = InputChannels.asIterable(sync(
-                        mLocalSB.db.watch(mCancelableVContext, mTableName, "", mResumeMarker)));
+                VIterable<WatchChange> watchStream = InputChannels.asIterable(
+                        mLocalSB.db.watch(mCancelableVContext, mTableName, "", mResumeMarker));
 
                 Log.i(TAG, "Watching for changes of table: " + mTableName + "...");
 

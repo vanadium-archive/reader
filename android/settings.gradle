@@ -1,1 +1,8 @@
 include ':app'
+
+if (System.getProperty('useLocalVanadiumLib') != null) {
+    include ':lib', ':android-lib'
+
+    project(':lib').projectDir = new File(settingsDir, '../../../java/lib')
+    project(':android-lib').projectDir = new File(settingsDir, '../../../java/android-lib')
+}
