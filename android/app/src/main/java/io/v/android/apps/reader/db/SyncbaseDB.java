@@ -17,6 +17,8 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.google.common.io.ByteStreams;
 
+import org.apache.commons.io.FileUtils;
+
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.ArrayList;
@@ -33,9 +35,13 @@ import io.v.android.libs.security.BlessingsManager;
 import io.v.android.v23.V;
 import io.v.android.v23.services.blessing.BlessingCreationException;
 import io.v.android.v23.services.blessing.BlessingService;
+import io.v.baku.toolkit.VAndroidContextMixin;
+import io.v.baku.toolkit.debug.DebugUtils;
 import io.v.impl.google.naming.NamingUtil;
 import io.v.impl.google.services.syncbase.SyncbaseServer;
 import io.v.v23.InputChannels;
+import io.v.v23.OptionDefs;
+import io.v.v23.Options;
 import io.v.v23.VIterable;
 import io.v.v23.context.CancelableVContext;
 import io.v.v23.context.VContext;
@@ -113,7 +119,22 @@ public class SyncbaseDB implements DB {
         }
 
         if (mVContext == null) {
-            mVContext = V.init(mContext);
+            if (activity instanceof VAndroidContextMixin) {
+                // In case of the activity inherits from one of the baku-toolkit's base activities,
+                // retrieve the Vanadium context from there directly.
+                mVContext = ((VAndroidContextMixin) activity)
+                        .getVAndroidContextTrait().getVContext();
+            } else {
+                // Otherwise, initialize Vanadium runtime here with -vmodule=*=5 setting.
+                if (DebugUtils.isApkDebug(activity)) {
+                    Options opts = new Options();
+                    opts.set(OptionDefs.LOG_VMODULE, "*=5");
+                    mVContext = V.init(mContext, opts);
+                } else {
+                    mVContext = V.init(mContext);
+                }
+            }
+
             try {
                 mVContext = V.withListenSpec(
                         mVContext, V.getListenSpec(mVContext).withProxy("proxy"));
@@ -211,6 +232,15 @@ public class SyncbaseDB implements DB {
 
         // Prepare the syncbase storage directory.
         java.io.File storageDir = new java.io.File(mContext.getFilesDir(), "syncbase");
+
+        // Clear the contents of local syncbase DB.
+        // TODO(youngseokyoon): remove this once Syncbase can properly handle locally stored data.
+        try {
+            FileUtils.deleteDirectory(storageDir);
+        } catch (IOException e) {
+            handleError("Couldn't clear the syncbase storage directory");
+        }
+
         storageDir.mkdirs();
 
         try {

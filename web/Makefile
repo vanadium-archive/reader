@@ -107,7 +107,7 @@ syncbase: bin/syncbased credentials tmp
 	$(eval blessing := $(shell bin/principal dump --v23.credentials=./credentials -s=true))
 	$(eval email := $(subst dev.v.io:u:,,$(blessing)))
 	./bin/syncbased \
-		--v=5 \
+		--vmodule=*=5 \
 		--alsologtostderr=false \
 		--root-dir="tmp/syncbase_$(id)" \
 		--name="users/$(email)/reader/$(id)/syncbase" \
@@ -122,7 +122,7 @@ cloudsync: bin/syncbased credentials tmp
 	$(eval blessing := $(shell bin/principal dump --v23.credentials=./credentials -s=true))
 	$(eval email := $(subst dev.v.io:u:,,$(blessing)))
 	./bin/syncbased \
-		--v=5 \
+		--vmodule=*=5 \
 		--alsologtostderr=false \
 		--root-dir="tmp/cloudsync" \
 		--name="users/$(email)/reader/cloudsync" \

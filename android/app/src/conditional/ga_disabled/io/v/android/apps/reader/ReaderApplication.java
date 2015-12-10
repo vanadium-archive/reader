@@ -14,7 +14,7 @@ import com.google.android.gms.analytics.Tracker;
  * This file is conditionally included to the project, when the "google-services.json" file does not
  * exist.
  */
-public class ReaderApplication extends Application {
+public class ReaderApplication extends BaseReaderApplication {
     /**
      * Gets the default {@link Tracker} for this {@link Application}.
      * Always returns null to disable tracking.

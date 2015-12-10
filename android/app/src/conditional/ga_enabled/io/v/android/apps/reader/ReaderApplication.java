@@ -15,7 +15,7 @@ import com.google.android.gms.analytics.Tracker;
  *
  * This file is conditionally included to the project, when the "google-services.json" file exists.
  */
-public class ReaderApplication extends Application {
+public class ReaderApplication extends BaseReaderApplication {
     private Tracker mTracker;
 
     /**
