@@ -76,12 +76,18 @@ public abstract class BaseReaderApplication extends Application {
     }
 
     private void deleteOldLogs(File dir) {
-        List<File> logFiles = Arrays.asList(dir.listFiles(new FilenameFilter() {
+        File[] files = dir.listFiles(new FilenameFilter() {
             @Override
             public boolean accept(File file, String s) {
                 return s.startsWith(getLogPrefix());
             }
-        }));
+        });
+
+        if (files == null) {
+            return;
+        }
+
+        List<File> logFiles = Arrays.asList(files);
 
         if (logFiles.size() >= MAX_LOG_COUNT) {
             Collections.sort(logFiles);
