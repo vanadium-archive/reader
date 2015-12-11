@@ -4,8 +4,11 @@
 
 package io.v.android.apps.reader;
 
+import android.Manifest;
 import android.content.pm.ActivityInfo;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
+import android.support.v4.app.ActivityCompat;
 import android.support.v4.view.GestureDetectorCompat;
 import android.view.MotionEvent;
 
@@ -16,11 +19,15 @@ import io.v.android.apps.reader.db.DB;
 import io.v.android.apps.reader.model.DeviceInfoFactory;
 import io.v.baku.toolkit.VAppCompatActivity;
 
+import static io.v.android.apps.reader.debug.DebugUtils.startSavingLogs;
+import static io.v.baku.toolkit.debug.DebugUtils.isApkDebug;
+
 /**
  * Base activity class for all the Reader app activities. Its responsibilities include DB
  * initialization, touch gesture detection, and google analytics tracking
  */
 public abstract class BaseReaderActivity extends VAppCompatActivity {
+
     private String mDeviceId;
     private DB mDB;
     private Tracker mTracker;
@@ -76,6 +83,16 @@ public abstract class BaseReaderActivity extends VAppCompatActivity {
     }
 
     private void initTracker() {
+        if (!Utils.hasExternalStoragePermission(this)) {
+            ActivityCompat.requestPermissions(
+                    this,
+                    new String[] {
+                            Manifest.permission.READ_EXTERNAL_STORAGE,
+                            Manifest.permission.WRITE_EXTERNAL_STORAGE
+                    },
+                    Constants.REQUEST_CODE_PERMISSION_EXTERNAL_STORAGE);
+        }
+
         // TODO(youngseokyoon): consolidate the Tracker into UserActionLogger
         mLogger = UserActionLogger.getInstance(this);
         mGestureListener = new GestureListener(this);
@@ -95,4 +112,26 @@ public abstract class BaseReaderActivity extends VAppCompatActivity {
         return super.dispatchTouchEvent(ev);
     }
 
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions,
+                                           int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+
+        switch (requestCode) {
+            case Constants.REQUEST_CODE_PERMISSION_EXTERNAL_STORAGE:
+                // If the permission is granted, reinitialize the loggers.
+                if (grantResults.length > 0 &&
+                        grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    mLogger.initPrinters();
+
+                    if (isApkDebug(this)) {
+                        startSavingLogs(this, Constants.APP_NAME);
+                    }
+                }
+                break;
+
+            default:
+                break;
+        }
+    }
 }

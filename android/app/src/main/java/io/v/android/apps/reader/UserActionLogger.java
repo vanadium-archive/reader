@@ -5,7 +5,6 @@
 package io.v.android.apps.reader;
 
 import android.content.Context;
-import android.os.Environment;
 import android.util.Log;
 
 import org.apache.commons.csv.CSVFormat;
@@ -15,9 +14,6 @@ import java.io.Closeable;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.Locale;
 
 import io.v.android.apps.reader.model.DeviceInfoFactory;
 
@@ -59,19 +55,17 @@ public class UserActionLogger implements Closeable {
     private UserActionLogger(Context context) {
         mDeviceId = DeviceInfoFactory.getDeviceId(context);
 
-        // Use an app-independent files directory to avoid accidentally deleting log
-        // files by clearing the app data.
-        File dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS);
-        if (!dir.exists()) {
-            dir.mkdirs();
+        if (Utils.hasExternalStoragePermission(context)) {
+            initPrinters();
         }
+    }
+
+    public void initPrinters() {
+        File dir = Utils.getLogDirectory();
 
         Log.i(TAG, "User action logs are saved at: " + dir.getAbsolutePath());
 
-        // Avoid having colons in the start timestamp
-        SimpleDateFormat formatter = new SimpleDateFormat(
-                "yyyyMMdd-HHmmss.SSS", Locale.getDefault());
-        String startTime = formatter.format(new Date());
+        String startTime = Utils.getTimeString();
 
         File touchLogFile = new File(dir,
                 String.format("reader-%s-touch-%s.log", mDeviceId, startTime));
