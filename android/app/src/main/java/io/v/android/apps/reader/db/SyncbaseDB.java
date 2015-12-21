@@ -6,7 +6,6 @@ package io.v.android.apps.reader.db;
 
 import android.app.Activity;
 import android.content.Context;
-import android.content.Intent;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
@@ -16,6 +15,9 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.google.common.io.ByteStreams;
+import com.google.common.util.concurrent.FutureCallback;
+import com.google.common.util.concurrent.Futures;
+import com.google.common.util.concurrent.ListenableFuture;
 
 import org.apache.commons.io.FileUtils;
 
@@ -33,8 +35,6 @@ import io.v.android.apps.reader.vdl.DeviceSet;
 import io.v.android.apps.reader.vdl.File;
 import io.v.android.libs.security.BlessingsManager;
 import io.v.android.v23.V;
-import io.v.android.v23.services.blessing.BlessingCreationException;
-import io.v.android.v23.services.blessing.BlessingService;
 import io.v.baku.toolkit.VAndroidContextMixin;
 import io.v.baku.toolkit.debug.DebugUtils;
 import io.v.impl.google.naming.NamingUtil;
@@ -50,8 +50,6 @@ import io.v.v23.rpc.Server;
 import io.v.v23.security.BlessingPattern;
 import io.v.v23.security.Blessings;
 import io.v.v23.security.VCertificate;
-import io.v.v23.security.VPrincipal;
-import io.v.v23.security.VSecurity;
 import io.v.v23.security.access.AccessList;
 import io.v.v23.security.access.Constants;
 import io.v.v23.security.access.Permissions;
@@ -156,7 +154,7 @@ public class SyncbaseDB implements DB {
                 Constants.ADMIN.getValue(), acl,
                 Constants.RESOLVE.getValue(), acl,
                 Constants.DEBUG.getValue(), acl));
-        getBlessings(activity);
+        getBlessings();
     }
 
     @Override
@@ -164,65 +162,22 @@ public class SyncbaseDB implements DB {
         return mInitialized;
     }
 
-    private void getBlessings(Activity activity) {
-        Blessings blessings = null;
-        try {
-            // See if there are blessings stored in shared preferences.
-            blessings = BlessingsManager.getBlessings(mContext);
-        } catch (VException e) {
-            handleError("Error getting blessings from shared preferences " + e.getMessage());
-        }
-        if (blessings == null) {
-            // Request new blessings from the account manager via an intent.  This intent
-            // will call back to onActivityResult() which will continue with
-            // configurePrincipal().
-            refreshBlessings(activity);
-            return;
-        }
-        configurePrincipal(blessings);
-    }
+    private void getBlessings() {
+        ListenableFuture<Blessings> blessingsFuture = BlessingsManager
+                .getBlessings(mContext, "VanadiumBlessings", true);
 
-    private void refreshBlessings(Activity activity) {
-        Intent intent = BlessingService.newBlessingIntent(mContext);
-        activity.startActivityForResult(intent,
-                io.v.android.apps.reader.Constants.REQUEST_CODE_SEEK_BLESSINGS);
-    }
-
-    @Override
-    public boolean onActivityResult(int requestCode, int resultCode, Intent data) {
-        if (requestCode == io.v.android.apps.reader.Constants.REQUEST_CODE_SEEK_BLESSINGS) {
-            try {
-                byte[] blessingsVom = BlessingService.extractBlessingReply(resultCode, data);
-                Blessings blessings = (Blessings) VomUtil.decode(blessingsVom, Blessings.class);
-                BlessingsManager.addBlessings(mContext, blessings);
-                Toast.makeText(mContext, "Success", Toast.LENGTH_SHORT).show();
-                configurePrincipal(blessings);
-            } catch (BlessingCreationException e) {
-                handleError("Couldn't create blessing: " + e.getMessage());
-            } catch (VException e) {
-                handleError("Couldn't derive blessing: " + e.getMessage());
+        Futures.addCallback(blessingsFuture, new FutureCallback<Blessings>() {
+            @Override
+            public void onSuccess(Blessings result) {
+                mUsername = mountNameFromBlessings(result);
+                setupLocalSyncbase();
             }
-            return true;
-        }
-        return false;
-    }
 
-    private void configurePrincipal(Blessings blessings) {
-        try {
-            VPrincipal p = V.getPrincipal(mVContext);
-            p.blessingStore().setDefaultBlessings(blessings);
-            p.blessingStore().set(blessings, new BlessingPattern("..."));
-            VSecurity.addToRoots(p, blessings);
-
-            // "<user_email>/android"
-            mUsername = mountNameFromBlessings(blessings);
-        } catch (VException e) {
-            handleError(String.format(
-                    "Couldn't set local blessing %s: %s", blessings, e.getMessage()));
-            return;
-        }
-
-        setupLocalSyncbase();
+            @Override
+            public void onFailure(Throwable t) {
+                handleError("Could not get blessing: " + t.getMessage());
+            }
+        });
     }
 
     private void setupLocalSyncbase() {
@@ -230,7 +185,7 @@ public class SyncbaseDB implements DB {
         final String syncbaseName = NamingUtil.join(
                 "users",
                 mUsername,
-                "reader",
+                "android/reader",
                 DeviceInfoFactory.getDevice(mContext).getId(),
                 "syncbase"
         );
@@ -284,7 +239,7 @@ public class SyncbaseDB implements DB {
             // "users/<user_email>/reader/cloudsync"
             String cloudsyncName = NamingUtil.join(
                     "users",
-                    NamingUtil.trimSuffix(mUsername, "android"),
+                    mUsername,
                     "reader/cloudsync"
             );
 
@@ -303,7 +258,7 @@ public class SyncbaseDB implements DB {
     private void createSyncgroup(Database db) {
         mSyncgroupName = NamingUtil.join(
                 "users",
-                NamingUtil.trimSuffix(mUsername, "android"),
+                mUsername,
                 "reader/cloudsync/%%sync/cloudsync"
         );
 
@@ -319,7 +274,7 @@ public class SyncbaseDB implements DB {
                 NamingUtil.join(
                         GLOBAL_MOUNT_TABLE,
                         "users",
-                        NamingUtil.trimSuffix(mUsername, "android"),
+                        mUsername,
                         "reader/rendezvous"
                 )
         );
@@ -452,8 +407,10 @@ public class SyncbaseDB implements DB {
     private static String mountNameFromBlessings(Blessings blessings) {
         for (List<VCertificate> chain : blessings.getCertificateChains()) {
             for (VCertificate certificate : Lists.reverse(chain)) {
-                if (certificate.getExtension().contains("@")) {
-                    return certificate.getExtension().replace(':', '/');
+                String ext = certificate.getExtension();
+                if (ext.contains("@")) {
+                    // Return only the user email portion after the app id.
+                    return ext.substring(ext.lastIndexOf(':') + 1);
                 }
             }
         }

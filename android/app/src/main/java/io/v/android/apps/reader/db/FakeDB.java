@@ -6,7 +6,6 @@ package io.v.android.apps.reader.db;
 
 import android.app.Activity;
 import android.content.Context;
-import android.content.Intent;
 import android.util.Log;
 
 import com.google.common.io.ByteStreams;
@@ -152,12 +151,6 @@ public class FakeDB implements DB {
     @Override
     public boolean isInitialized() {
         return true;
-    }
-
-    @Override
-    public boolean onActivityResult(int requestCode, int resultCode, Intent data) {
-        // Nothing to do.
-        return false;
     }
 
     @Override

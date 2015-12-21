@@ -557,9 +557,6 @@ public class PdfViewerActivity extends BaseReaderActivity {
         super.onActivityResult(requestCode, resultCode, data);
 
         Log.i(TAG, String.format("onActivityResult(%d, %d, data) called", requestCode, resultCode));
-        if (getDB().onActivityResult(requestCode, resultCode, data)) {
-            return;
-        }
 
         // Any other activity results would be handled here.
         Log.w(TAG, String.format(

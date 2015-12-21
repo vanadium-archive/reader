@@ -6,7 +6,6 @@ package io.v.android.apps.reader.db;
 
 import android.app.Activity;
 import android.content.Context;
-import android.content.Intent;
 
 import io.v.android.apps.reader.model.Listener;
 import io.v.android.apps.reader.vdl.Device;
@@ -55,14 +54,6 @@ public interface DB {
      * @return true if the initialization process is completed.
      */
     boolean isInitialized();
-
-    /**
-     * If init() sent an intent to another Activity, the result must be forwarded
-     * from our app's activity to this method.
-     *
-     * @return true if the requestCode matches an intent sent by this implementation.
-     */
-    boolean onActivityResult(int requestCode, int resultCode, Intent data);
 
     /**
      * Provides a list of elements that fits well with RecyclerView.Adapter.
