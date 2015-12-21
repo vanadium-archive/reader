@@ -10,13 +10,14 @@ import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.OpenableColumns;
+import android.support.v4.view.GestureDetectorCompat;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.MotionEvent;
 import android.view.View;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
-import android.widget.Button;
 import android.widget.Toast;
 
 import com.google.android.gms.analytics.HitBuilders;
@@ -47,8 +48,6 @@ public class PdfViewerActivity extends BaseReaderActivity {
     private static final String EXTRA_DEVICE_SET_ID = "device_set_id";
 
     private PdfViewWrapper mPdfView;
-    private Button mButtonPrev;
-    private Button mButtonNext;
     private MenuItem mMenuItemLinkPage;
 
     private DBList<DeviceSet> mDeviceSets;
@@ -78,20 +77,27 @@ public class PdfViewerActivity extends BaseReaderActivity {
         mPdfView = (PdfViewWrapper) findViewById(R.id.pdfview);
         mPdfView.init();
 
-        mButtonPrev = (Button) findViewById(R.id.button_prev);
-        mButtonNext = (Button) findViewById(R.id.button_next);
+        // Swipe gesture detection.
+        final GestureDetectorCompat swipeDetector = SwipeGestureDetector.create(
+                this,
+                new SwipeGestureDetector.SimpleOnSwipeListener() {
+                    @Override
+                    public boolean onSwipeLeft() {
+                        nextPage();
+                        return true;
+                    }
 
-        mButtonPrev.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                prevPage();
-            }
-        });
+                    @Override
+                    public boolean onSwipeRight() {
+                        prevPage();
+                        return true;
+                    }
+                });
 
-        mButtonNext.setOnClickListener(new View.OnClickListener() {
+        mPdfView.setOnTouchListener(new View.OnTouchListener() {
             @Override
-            public void onClick(View v) {
-                nextPage();
+            public boolean onTouch(View v, MotionEvent event) {
+                return swipeDetector.onTouchEvent(event);
             }
         });
     }

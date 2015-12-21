@@ -11,27 +11,10 @@
     android:layout_marginTop="@dimen/activity_vertical_margin"
     tools:context=".PdfViewerActivity">
 
-    <Button
-        android:id="@+id/button_prev"
-        android:layout_width="48dp"
-        android:layout_height="48dp"
-        android:layout_alignParentBottom="true"
-        android:layout_alignParentLeft="true"
-        android:text="&lt;" />
-
-    <Button
-        android:id="@+id/button_next"
-        android:layout_width="48dp"
-        android:layout_height="48dp"
-        android:layout_alignParentBottom="true"
-        android:layout_alignParentRight="true"
-        android:text="&gt;" />
-
     <io.v.android.apps.reader.PdfViewWrapper
         android:id="@+id/pdfview"
         android:layout_width="match_parent"
         android:layout_height="fill_parent"
-        android:layout_above="@id/button_prev"
         android:layout_alignParentTop="true" />
 
 </RelativeLayout>
