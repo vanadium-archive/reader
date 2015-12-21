@@ -1,16 +1,19 @@
 /.jiri
 #TODO(nlacasse): Get rid of .v23 below once v23->jiri transition is complete.
 /.v23
+
+node_modules
+*.log
+
 web/bin/principal
 web/bin/syncbased
 web/coverage
 web/credentials
 web/disk.html
-web/node_modules
-web/npm-debug.log
 web/public/bundle.*
 web/tmp
 web/public/pdf-web-view.js
+web/public/*.pdf
 
 # VDL generated stubs should be ignored
 web/browser/vanadium/v.io/*
