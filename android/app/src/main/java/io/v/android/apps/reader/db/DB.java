@@ -7,6 +7,8 @@ package io.v.android.apps.reader.db;
 import android.app.Activity;
 import android.content.Context;
 
+import java.io.Closeable;
+import java.io.IOException;
 import java.io.InputStream;
 
 import io.v.android.apps.reader.model.Listener;
@@ -39,6 +41,11 @@ public interface DB {
 
             return result;
         }
+    }
+
+    interface FileBuilder extends Closeable {
+        void write(byte[] b, int off, int len) throws IOException;
+        File build();
     }
 
     /**
@@ -146,16 +153,13 @@ public interface DB {
     void deleteDeviceSet(String id);
 
     /**
-     * Stores the given bytes and returns a File object representing the written data, which can be
-     * passed to readBytes() method to read the data back.
+     * Returns a {@link FileBuilder} object on which the user can write the file content and finally
+     * obtain the {@link File} object representing the pdf file.
      *
-     * The returned File object should be explicitly added to the database by calling addFile().
-     *
-     * @param bytes bytes to be written.
      * @param title title of this file.
-     * @return      a File object representing the written data.
+     * @return      a {@link FileBuilder} object for building the {@link File}.
      */
-    File storeBytes(byte[] bytes, String title);
+    FileBuilder getFileBuilder(String title);
 
     /**
      * Opens an {@link InputStream} for the given file.

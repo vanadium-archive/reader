@@ -9,6 +9,8 @@ import android.content.Intent;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.provider.OpenableColumns;
 import android.support.v4.view.GestureDetectorCompat;
 import android.util.Log;
@@ -16,15 +18,20 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
+import android.widget.ProgressBar;
+import android.widget.TextView;
 
 import com.google.android.gms.analytics.HitBuilders;
-import com.google.common.io.ByteStreams;
+import com.google.common.util.concurrent.ListeningExecutorService;
+import com.google.common.util.concurrent.MoreExecutors;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.Executors;
 
+import io.v.android.apps.reader.db.DB;
 import io.v.android.apps.reader.db.DB.DBList;
 import io.v.android.apps.reader.model.IdFactory;
 import io.v.android.apps.reader.model.Listener;
@@ -38,16 +45,22 @@ import io.v.android.apps.reader.vdl.File;
 public class PdfViewerActivity extends BaseReaderActivity {
 
     private static final String TAG = PdfViewerActivity.class.getSimpleName();
+    private static final int BLOCK_SIZE = 0x1000;   // 4K
 
     // Category string used for Google Analytics tracking.
     private static final String CATEGORY_PAGE_NAVIGATION = "Page Navigation";
     private static final String EXTRA_DEVICE_SET_ID = "device_set_id";
 
     private PdfViewWrapper mPdfView;
+    private ProgressBar mProgressBar;
+    private TextView mProgressText;
     private MenuItem mMenuItemLinkPage;
 
     private DBList<DeviceSet> mDeviceSets;
     private DeviceSet mCurrentDS;
+
+    private ListeningExecutorService mThreadPool;
+    private Handler mHandler;
 
     /**
      * Helper methods for creating an intent to start a PdfViewerActivity.
@@ -70,8 +83,14 @@ public class PdfViewerActivity extends BaseReaderActivity {
 
         setContentView(R.layout.activity_pdf_viewer);
 
+        mThreadPool = MoreExecutors.listeningDecorator(Executors.newFixedThreadPool(1));
+        mHandler = new Handler(Looper.getMainLooper());
+
         mPdfView = (PdfViewWrapper) findViewById(R.id.pdfview);
         mPdfView.init();
+
+        mProgressBar = (ProgressBar) findViewById(R.id.pdf_progress_bar);
+        mProgressText = (TextView) findViewById(R.id.pdf_progress_text);
 
         // Swipe gesture detection.
         final GestureDetectorCompat swipeDetector = SwipeGestureDetector.create(
@@ -213,24 +232,69 @@ public class PdfViewerActivity extends BaseReaderActivity {
         return new DeviceMeta(dm.getDeviceId(), dm.getPage(), dm.getZoom(), dm.getLinked());
     }
 
-    private void createAndJoinDeviceSet(Uri fileUri) {
-        // Get the file content.
-        byte[] bytes = getBytesFromUri(fileUri);
+    private void createAndJoinDeviceSet(final Uri fileUri) {
+        mThreadPool.submit(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    byte[] bytes = getBytesFromUri(fileUri);
+                    File file = createFile(bytes, getTitleFromUri(fileUri));
+                    final DeviceSet ds = createDeviceSet(file);
+
+                    // Join the device set from the UI thread.
+                    mHandler.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            joinDeviceSet(ds);
+                        }
+                    });
+                } catch (Exception e) {
+                    Log.e(TAG, "Could not create the device set: " + e.getMessage(), e);
+
+                    // In case of an error, finish this activity and go back to the previous one.
+                    mHandler.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            finish();
+                        }
+                    });
+                }
+            }
+        });
+    }
+
+    private File createFile(final byte[] bytes, final String title) throws IOException {
+        initProgress(R.string.progress_writing_pdf, bytes.length);
 
         // Create a vdl File object representing this pdf file and put it in the db.
-        File vFile = getDB().storeBytes(bytes, getTitleFromUri(fileUri));
+        DB.FileBuilder builder;
+        try {
+            builder = getDB().getFileBuilder(title);
+        } catch (RuntimeException e) {
+            throw new IOException(e);
+        }
+
+        int cur = 0;
+        int available = bytes.length;
+        while (available > 0) {
+            int numBytes = Math.min(BLOCK_SIZE, available);
+            builder.write(bytes, cur, numBytes);
+            cur += numBytes;
+            available -= numBytes;
+
+            updateProgress(cur);
+        }
+
+        initProgress(R.string.progress_finishing_up_writing, -1);
+        File vFile = builder.build();
+
         Log.i(TAG, "vFile created: " + vFile);
         if (vFile == null) {
-            Log.e(TAG, "Could not store the file content of Uri: " + fileUri.toString());
+            throw new IOException("Could not store the file content: " + title);
         }
         getDB().addFile(vFile);
 
-        // Create a device set object and put it in the db.
-        DeviceSet ds = createDeviceSet(vFile);
-        getDB().addDeviceSet(ds);
-
-        // Join the device set.
-        joinDeviceSet(ds);
+        return vFile;
     }
 
     @Override
@@ -285,14 +349,23 @@ public class PdfViewerActivity extends BaseReaderActivity {
     }
 
     private DeviceSet createDeviceSet(File vFile) {
+        initProgress(R.string.progress_creating_device_set, 1);
+
         String id = IdFactory.getRandomId();
         String fileId = vFile.getId();
         Map<String, DeviceMeta> devices = new HashMap<>();
 
-        return new DeviceSet(id, fileId, devices);
+        DeviceSet ds = new DeviceSet(id, fileId, devices);
+        getDB().addDeviceSet(ds);
+
+        updateProgress(1);
+
+        return ds;
     }
 
     private void joinDeviceSet(DeviceSet ds) {
+        showProgressWidgets(false);
+
         mPdfView.loadPdfFile("/file_id/" + ds.getFileId());
 
         // Create a new device meta, and update the device set with it.
@@ -324,17 +397,28 @@ public class PdfViewerActivity extends BaseReaderActivity {
         mCurrentDS = null;
     }
 
-    private byte[] getBytesFromUri(Uri uri) {
+    private byte[] getBytesFromUri(final Uri uri) throws IOException {
         Log.i(TAG, "getBytesFromUri: " + uri.toString());
 
-        try (InputStream in = getContentResolver().openInputStream(uri)) {
-            // Get the entire file contents as a byte array.
-            return ByteStreams.toByteArray(in);
-        } catch (IOException e) {
-            handleException(e);
+        InputStream in = getContentResolver().openInputStream(uri);
+        int available = in.available();
+
+        initProgress(R.string.progress_reading_source_pdf, available);
+
+        byte[] result = new byte[available];
+        int cur = 0;
+        int bytesRead;
+
+        while ((bytesRead = in.read(result, cur, Math.min(BLOCK_SIZE, available))) != -1 &&
+                available > 0) {
+            cur += bytesRead;
+            available -= bytesRead;
+            updateProgress(cur);
         }
 
-        return null;
+        in.close();
+
+        return result;
     }
 
     private String getTitleFromUri(Uri uri) {
@@ -521,8 +605,8 @@ public class PdfViewerActivity extends BaseReaderActivity {
         }
     }
 
-    private static void handleException(Exception e) {
-        Log.e(TAG, e.getMessage(), e);
+    private static void handleException(Throwable t) {
+        Log.e(TAG, t.getMessage(), t);
     }
 
     @Override
@@ -535,6 +619,50 @@ public class PdfViewerActivity extends BaseReaderActivity {
         Log.w(TAG, String.format(
                 "Unhandled activity result. (requestCode: %d, resultCode: %d)",
                 requestCode, resultCode));
+    }
+
+    private void initProgress(final int progressTextRes, final int maxProgress) {
+        showProgressWidgets(true);
+        mHandler.post(new Runnable() {
+            @Override
+            public void run() {
+                mProgressText.setText(progressTextRes);
+
+                if (maxProgress >= 0) {
+                    mProgressBar.setIndeterminate(false);
+                    mProgressBar.setMax(maxProgress);
+                    mProgressBar.setProgress(0);
+                } else {
+                    mProgressBar.setIndeterminate(true);
+                }
+            }
+        });
+    }
+
+    private void updateProgress(final int progress) {
+        mHandler.post(new Runnable() {
+            @Override
+            public void run() {
+                mProgressBar.setProgress(progress);
+            }
+        });
+    }
+
+    private void showProgressWidgets(final boolean showProgress) {
+        mHandler.post(new Runnable() {
+            @Override
+            public void run() {
+                if (showProgress) {
+                    mProgressText.setVisibility(View.VISIBLE);
+                    mProgressBar.setVisibility(View.VISIBLE);
+                    mPdfView.setVisibility(View.INVISIBLE);
+                } else {
+                    mProgressText.setVisibility(View.INVISIBLE);
+                    mProgressBar.setVisibility(View.INVISIBLE);
+                    mPdfView.setVisibility(View.VISIBLE);
+                }
+            }
+        });
     }
 
 }

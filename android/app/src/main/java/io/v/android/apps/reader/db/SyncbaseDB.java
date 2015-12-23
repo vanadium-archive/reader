@@ -23,12 +23,13 @@ import org.apache.commons.io.FileUtils;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
 import io.v.android.apps.reader.model.DeviceInfoFactory;
-import io.v.android.apps.reader.model.IdFactory;
 import io.v.android.apps.reader.model.Listener;
 import io.v.android.apps.reader.vdl.Device;
 import io.v.android.apps.reader.vdl.DeviceSet;
@@ -490,31 +491,8 @@ public class SyncbaseDB implements DB {
     }
 
     @Override
-    public File storeBytes(byte[] bytes, String title) {
-        // In case of Syncbase DB, store the bytes as a blob.
-        // TODO(youngseokyoon): check if the same blob is already in the database.
-        try {
-            BlobWriter writer = sync(mLocalSB.db.writeBlob(mVContext, null));
-            OutputStream out = writer.stream(mVContext);
-            out.write(bytes);
-            out.close();
-
-            sync(writer.commit(mVContext));
-
-            BlobRef ref = writer.getRef();
-
-            return new File(
-                    IdFactory.getFileId(bytes),
-                    ref,
-                    title,
-                    bytes.length,
-                    io.v.android.apps.reader.Constants.PDF_MIME_TYPE
-            );
-        } catch (VException | IOException e) {
-            handleError("Could not write the blob: " + e.getMessage());
-        }
-
-        return null;
+    public FileBuilder getFileBuilder(String title) {
+        return new SyncbaseFileBuilder(title);
     }
 
     @Override
@@ -829,5 +807,74 @@ public class SyncbaseDB implements DB {
         public Table files;
         public Table devices;
         public Table deviceSets;
+    }
+
+    private class SyncbaseFileBuilder implements DB.FileBuilder {
+
+        private MessageDigest mDigest;
+        private String mTitle;
+        private long mSize;
+        private BlobWriter mBlobWriter;
+        private OutputStream mOutputStream;
+
+        public SyncbaseFileBuilder(String title) {
+            try {
+                mDigest = MessageDigest.getInstance("MD5");
+            } catch (NoSuchAlgorithmException e) {
+                Log.e(TAG, "Could not create md5 digest object: " + e.getMessage(), e);
+                throw new RuntimeException(e);
+            }
+
+            mTitle = title;
+            mSize = 0L;
+
+            try {
+                mBlobWriter = sync(mLocalSB.db.writeBlob(mVContext, null));
+                mOutputStream = mBlobWriter.stream(mVContext);
+            } catch (VException e) {
+                Log.e(TAG, "Could not create SyncbaseFileBuilder: " + e.getMessage(), e);
+                throw new RuntimeException(e);
+            }
+        }
+
+        @Override
+        public void write(byte[] b, int off, int len) throws IOException {
+            mOutputStream.write(b, off, len);
+            mDigest.update(b, off, len);
+            mSize += len;
+        }
+
+        @Override
+        public File build() {
+            try {
+                Log.i(TAG, "build() method called.");
+                mOutputStream.close();
+                Log.i(TAG, "after mOutputStream.close()");
+                sync(mBlobWriter.commit(mVContext));
+                Log.i(TAG, "after commit.");
+
+                String id = VomUtil.bytesToHexString(mDigest.digest());
+                Log.i(TAG, "after digest.");
+                BlobRef ref = mBlobWriter.getRef();
+                Log.i(TAG, "after getRef().");
+
+                return new File(
+                        id,
+                        ref,
+                        mTitle,
+                        mSize,
+                        io.v.android.apps.reader.Constants.PDF_MIME_TYPE);
+
+            } catch (IOException | VException e) {
+                Log.e(TAG, "Could not build the File: " + e.getMessage(), e);
+            }
+            return null;
+        }
+
+        @Override
+        public void close() throws IOException {
+            mOutputStream.close();
+            mOutputStream = null;
+        }
     }
 }

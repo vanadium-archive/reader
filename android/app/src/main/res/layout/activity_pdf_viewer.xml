@@ -15,6 +15,22 @@
         android:id="@+id/pdfview"
         android:layout_width="match_parent"
         android:layout_height="fill_parent"
-        android:layout_alignParentTop="true" />
+        android:layout_alignParentTop="true"
+        android:visibility="invisible" />
+
+    <ProgressBar
+        android:id="@+id/pdf_progress_bar"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:layout_centerVertical="true"
+        style="@android:style/Widget.Material.Light.ProgressBar.Horizontal" />
+
+    <TextView
+        android:id="@+id/pdf_progress_text"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:layout_above="@id/pdf_progress_bar"
+        android:textColor="@color/textPrimary"
+        android:gravity="center" />
 
 </RelativeLayout>

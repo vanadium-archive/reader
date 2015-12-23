@@ -6,11 +6,7 @@ package io.v.android.apps.reader.model;
 
 import android.util.Log;
 
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.UUID;
-
-import io.v.v23.vom.VomUtil;
 
 /**
  * Helper class for generating id strings to be used in Syncbase tables.
@@ -27,38 +23,6 @@ public class IdFactory {
      */
     public static String getRandomId() {
         return UUID.randomUUID().toString();
-    }
-
-    /**
-     * Gets a file id string. Uses MD5 hash to generate the key of the file.
-     * When the MD5 hashing fails, use a random id as a fallback.
-     *
-     * @param fileContents actual file contents as a byte array
-     * @return
-     */
-    public static String getFileId(byte[] fileContents) {
-        String result = getMD5HashString(fileContents);
-        if (result == null) {
-            result = getRandomId();
-        }
-
-        return result;
-    }
-
-    private static String getMD5HashString(byte[] bytes) {
-        if (bytes == null) {
-            return null;
-        }
-
-        try {
-            MessageDigest md = MessageDigest.getInstance("MD5");
-            md.update(bytes);
-            return VomUtil.bytesToHexString(md.digest());
-        } catch (NoSuchAlgorithmException e) {
-            handleException(e);
-        }
-
-        return null;
     }
 
     private static void handleException(Exception e) {

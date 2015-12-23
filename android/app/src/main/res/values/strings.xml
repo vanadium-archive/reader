@@ -3,4 +3,9 @@
     <string name="action_settings">Settings</string>
     <string name="action_link">Link Page</string>
     <string name="action_add_pdf">Add PDF</string>
+
+    <string name="progress_reading_source_pdf">Reading the source PDF file...</string>
+    <string name="progress_writing_pdf">Writing the PDF file to Syncbase...</string>
+    <string name="progress_finishing_up_writing">Finishing up the writing...</string>
+    <string name="progress_creating_device_set">Creating a new device set...</string>
 </resources>
