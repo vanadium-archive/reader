@@ -15,10 +15,13 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
+import com.google.common.util.concurrent.FutureCallback;
+import com.google.common.util.concurrent.Futures;
+import com.google.common.util.concurrent.SettableFuture;
+
 import java.io.InputStream;
+
+import io.v.android.apps.reader.db.DB;
 
 /**
  * Wrapper class for the PDF Viewer library.
@@ -29,40 +32,21 @@ public class PdfViewWrapper extends WebView {
 
     private static final String TAG = PdfViewWrapper.class.getSimpleName();
 
+    private SettableFuture<Boolean> mPageLoaded;
     private int mPageCount;
 
     public PdfViewWrapper(Context context, AttributeSet attrs) {
         super(context, attrs);
+
+        mPageLoaded = SettableFuture.create();
     }
 
     public void init() {
         WebSettings settings = getSettings();
         settings.setJavaScriptEnabled(true);
         settings.setAllowUniversalAccessFromFileURLs(true);
-
         setWebChromeClient(new WebChromeClient());
-
-        setWebViewClient(new WebViewClient() {
-            @Override
-            public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
-                Log.i(TAG, "shouldInterceptRequest called");
-
-                File file = new File(request.getUrl().getPath());
-                Log.i(TAG, "file path: " + file.getPath());
-
-                try {
-                    // Should NOT close the stream here, so that the stream can be read by WebView.
-                    InputStream inputStream = new FileInputStream(file);
-
-                    Log.i(TAG, "returning a custom WebResourceResponse");
-                    return new WebResourceResponse("application/pdf", "binary", inputStream);
-                } catch (IOException e) {
-                    Log.i(TAG, "falling back to super.shouldInterceptRequest");
-                    return super.shouldInterceptRequest(view, request);
-                }
-            }
-        });
-
+        setWebViewClient(new PdfViewClient());
         addJavascriptInterface(new JSInterface(), "android");
 
         loadUrl("file:///android_asset/pdfjs/pdf-web-view.html");
@@ -70,13 +54,23 @@ public class PdfViewWrapper extends WebView {
 
     /**
      * Loads the PDF file at the given path into the pdf.js component within WebView.
-     * NOTE: must be called after the page loading is finished.
      */
-    public void loadPdfFile(String filePath) {
-        evaluateJavascript("window.client.open(\"" + filePath + "\");", null);
+    public void loadPdfFile(final String filePath) {
+        Futures.addCallback(mPageLoaded, new FutureCallback<Boolean>() {
+            @Override
+            public void onSuccess(Boolean result) {
+                Log.i(TAG, "loadPdfFile called: " + filePath);
+                evaluateJavascript("window.client.open(\"" + filePath + "\");", null);
 
-        // leave the page count as 0 until the page count value is properly set from JS side.
-        mPageCount = 0;
+                // leave the page count as 0 until the page count value is properly set from JS side.
+                mPageCount = 0;
+            }
+
+            @Override
+            public void onFailure(Throwable t) {
+                // Nothing to do.
+            }
+        });
     }
 
     /**
@@ -103,6 +97,40 @@ public class PdfViewWrapper extends WebView {
         public void setPageCount(int pageCount) {
             Log.d(TAG, "setPageCount(" + pageCount + ") called.");
             mPageCount = pageCount;
+        }
+    }
+
+    private class PdfViewClient extends WebViewClient {
+        @Override
+        public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
+            Log.i(TAG, "shouldInterceptRequest called");
+
+            String path = request.getUrl().getPath();
+            if (!path.startsWith("/file_id/")) {
+                Log.i(TAG, "Not a file id path. Falling back to super.shouldInterceptRequest");
+                return super.shouldInterceptRequest(view, request);
+            }
+
+            String fileId = request.getUrl().getLastPathSegment();
+            Log.i(TAG, "File ID: " + fileId);
+
+            // Should NOT close the stream here, so that the stream can be read by WebView.
+            InputStream in = DB.Singleton.get(getContext()).getInputStreamForFile(fileId);
+
+            if (in != null) {
+                Log.i(TAG, "returning a custom WebResourceResponse");
+                return new WebResourceResponse("application/pdf", "binary", in);
+            } else {
+                Log.i(TAG, "Could not open an input stream. " +
+                        "Falling back to super.shouldInterceptRequest");
+                return super.shouldInterceptRequest(view, request);
+            }
+        }
+
+        @Override
+        public void onPageFinished(WebView view, String url) {
+            super.onPageFinished(view, url);
+            mPageLoaded.set(true);
         }
     }
 

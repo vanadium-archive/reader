@@ -16,14 +16,10 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
-import android.webkit.WebView;
-import android.webkit.WebViewClient;
-import android.widget.Toast;
 
 import com.google.android.gms.analytics.HitBuilders;
 import com.google.common.io.ByteStreams;
 
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.HashMap;
@@ -297,41 +293,12 @@ public class PdfViewerActivity extends BaseReaderActivity {
     }
 
     private void joinDeviceSet(DeviceSet ds) {
-        // Get the file contents from the database
-        // TODO(youngseokyoon): get the blob asynchronously. right now, it's blocking the UI thread.
-        File file = getDB().getFileList().getItemById(ds.getFileId());
-        byte[] bytes = getDB().readBytes(file);
-        if (bytes == null) {
-            Toast.makeText(this, "Could not load the file contents.", Toast.LENGTH_LONG).show();
-            return;
-        }
-
-        // The pdf viewer widget requires the file to be an actual java.io.File object.
-        // Create a temporary file and write the contents.
-        final java.io.File jFile = new java.io.File(getCacheDir(), ds.getFileId());
-        try (FileOutputStream out = new FileOutputStream(jFile)) {
-            out.write(bytes);
-        } catch (IOException e) {
-            handleException(e);
-        }
-
-        // Initialize the pdf viewer widget with the file content.
-        Log.i(TAG, "File path: " + jFile.getPath());
-
-        // TODO(youngseokyoon): move this logic to PdfViewWrapper
-        mPdfView.setWebViewClient(new WebViewClient() {
-            @Override
-            public void onPageFinished(WebView view, String url) {
-                super.onPageFinished(view, url);
-                mPdfView.loadPdfFile(jFile.getPath());
-
-                writeNavigationAction("Page Changed", 1);
-            }
-        });
+        mPdfView.loadPdfFile("/file_id/" + ds.getFileId());
 
         // Create a new device meta, and update the device set with it.
         Log.i(TAG, "Joining device set: " + ds.getId());
         DeviceMeta dm = createDeviceMeta();
+        // TODO(youngseokyoon): don't wait till these operations are finished.
         ds.getDevices().put(dm.getDeviceId(), dm);
         getDB().updateDeviceSet(ds);
 

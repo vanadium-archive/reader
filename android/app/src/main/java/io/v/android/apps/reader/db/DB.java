@@ -7,6 +7,8 @@ package io.v.android.apps.reader.db;
 import android.app.Activity;
 import android.content.Context;
 
+import java.io.InputStream;
+
 import io.v.android.apps.reader.model.Listener;
 import io.v.android.apps.reader.vdl.Device;
 import io.v.android.apps.reader.vdl.DeviceSet;
@@ -156,11 +158,18 @@ public interface DB {
     File storeBytes(byte[] bytes, String title);
 
     /**
-     * Reads the bytes from the File object.
+     * Opens an {@link InputStream} for the given file.
      *
      * @param file the file to be read.
-     * @return     the file contents as a byte array.
+     * @return     the input stream for the given file, or null if an error occurs.
      */
-    byte[] readBytes(File file);
+    InputStream getInputStreamForFile(File file);
+
+    /**
+     * Opens an {@link InputStream} for the given file id.
+     * @param fileId the id of the file to be read.
+     * @return       the input stream for the given file id, or null if an error occurs.
+     */
+    InputStream getInputStreamForFile(String fileId);
 
 }

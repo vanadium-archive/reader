@@ -14,7 +14,6 @@ import android.widget.Toast;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
-import com.google.common.io.ByteStreams;
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
@@ -22,6 +21,7 @@ import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.commons.io.FileUtils;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
@@ -518,20 +518,30 @@ public class SyncbaseDB implements DB {
     }
 
     @Override
-    public byte[] readBytes(File file) {
+    public InputStream getInputStreamForFile(File file) {
         if (file == null || file.getRef() == null) {
             return null;
         }
 
         try {
             BlobReader reader = mLocalSB.db.readBlob(mVContext, file.getRef());
-            return ByteStreams.toByteArray(reader.stream(mVContext, 0L));
-        } catch (VException | IOException e) {
-            handleError("Could not read the blob " + file.getRef().toString()
+            return reader.stream(mVContext, 0L);
+        } catch (VException e) {
+            handleError("Could not open the input stream for file " + file.getRef().toString()
                     + ": " + e.getMessage());
         }
 
         return null;
+    }
+
+    @Override
+    public InputStream getInputStreamForFile(String fileId) {
+        try {
+            File file = (File) sync(mLocalSB.files.get(mVContext, fileId, File.class));
+            return getInputStreamForFile(file);
+        } catch (VException e) {
+            return null;
+        }
     }
 
     private void handleError(String msg) {

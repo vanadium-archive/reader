@@ -8,11 +8,10 @@ import android.app.Activity;
 import android.content.Context;
 import android.util.Log;
 
-import com.google.common.io.ByteStreams;
-
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -215,14 +214,20 @@ public class FakeDB implements DB {
     }
 
     @Override
-    public byte[] readBytes(File file) {
-        java.io.File jFile = new java.io.File(mContext.getCacheDir(), file.getId());
-        try (FileInputStream in = new FileInputStream(jFile)) {
-            return ByteStreams.toByteArray(in);
+    public InputStream getInputStreamForFile(File file) {
+        return getInputStreamForFile(file.getId());
+    }
+
+    @Override
+    public InputStream getInputStreamForFile(String fileId) {
+        java.io.File jFile = new java.io.File(mContext.getCacheDir(), fileId);
+        try {
+            return new FileInputStream(jFile);
         } catch (IOException e) {
             Log.e(TAG, e.getMessage(), e);
         }
 
         return null;
     }
+
 }
