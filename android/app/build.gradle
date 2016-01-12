@@ -24,6 +24,9 @@ apply plugin: 'com.android.application'
 // It's going to use VDL.
 apply plugin: 'io.v.vdl'
 
+// Retrolambda plugin
+apply plugin: 'me.tatarka.retrolambda'
+
 
 // Conditionally apply the google services plugin, depending on existence of the configuration file.
 // Also, add conditional source folders as source directories.
@@ -46,8 +49,8 @@ android {
     buildToolsVersion "23.0.1"
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_7
-        targetCompatibility JavaVersion.VERSION_1_7
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
     }
 
     defaultConfig {

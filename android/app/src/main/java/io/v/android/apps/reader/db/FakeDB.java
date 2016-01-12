@@ -14,7 +14,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -152,14 +151,8 @@ public class FakeDB implements DB {
         private long mSize;
         private ByteArrayOutputStream mOutputStream;
 
-        public FakeFileBuilder(String title) {
-            try {
-                mDigest = MessageDigest.getInstance("MD5");
-            } catch (NoSuchAlgorithmException e) {
-                Log.e(TAG, "Could not create md5 digest object: " + e.getMessage(), e);
-                throw new RuntimeException(e);
-            }
-
+        public FakeFileBuilder(String title) throws Exception {
+            mDigest = MessageDigest.getInstance("MD5");
             mTitle = title;
             mSize = 0L;
             mOutputStream = new ByteArrayOutputStream();
@@ -170,6 +163,15 @@ public class FakeDB implements DB {
             mOutputStream.write(b, off, len);
             mDigest.update(b, off, len);
             mSize += len;
+        }
+
+        @Override
+        public void cancel() {
+            try {
+                mOutputStream.close();
+            } catch (IOException e) {
+                Log.e(TAG, "Could not cancel the writing: " + e.getMessage(), e);
+            }
         }
 
         @Override
@@ -257,7 +259,7 @@ public class FakeDB implements DB {
     }
 
     @Override
-    public FileBuilder getFileBuilder(String title) {
+    public FileBuilder getFileBuilder(String title) throws Exception {
         return new FakeFileBuilder(title);
     }
 

@@ -24,7 +24,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -491,7 +490,7 @@ public class SyncbaseDB implements DB {
     }
 
     @Override
-    public FileBuilder getFileBuilder(String title) {
+    public FileBuilder getFileBuilder(String title) throws Exception {
         return new SyncbaseFileBuilder(title);
     }
 
@@ -817,24 +816,13 @@ public class SyncbaseDB implements DB {
         private BlobWriter mBlobWriter;
         private OutputStream mOutputStream;
 
-        public SyncbaseFileBuilder(String title) {
-            try {
-                mDigest = MessageDigest.getInstance("MD5");
-            } catch (NoSuchAlgorithmException e) {
-                Log.e(TAG, "Could not create md5 digest object: " + e.getMessage(), e);
-                throw new RuntimeException(e);
-            }
-
+        public SyncbaseFileBuilder(String title) throws Exception {
+            mDigest = MessageDigest.getInstance("MD5");
             mTitle = title;
             mSize = 0L;
 
-            try {
-                mBlobWriter = sync(mLocalSB.db.writeBlob(mVContext, null));
-                mOutputStream = mBlobWriter.stream(mVContext);
-            } catch (VException e) {
-                Log.e(TAG, "Could not create SyncbaseFileBuilder: " + e.getMessage(), e);
-                throw new RuntimeException(e);
-            }
+            mBlobWriter = sync(mLocalSB.db.writeBlob(mVContext, null));
+            mOutputStream = mBlobWriter.stream(mVContext);
         }
 
         @Override
@@ -842,6 +830,16 @@ public class SyncbaseDB implements DB {
             mOutputStream.write(b, off, len);
             mDigest.update(b, off, len);
             mSize += len;
+        }
+
+        @Override
+        public void cancel() {
+            try {
+                mOutputStream.close();
+                mBlobWriter.delete(mVContext);
+            } catch (IOException e) {
+                Log.e(TAG, "Could not cancel the writing: " + e.getMessage(), e);
+            }
         }
 
         @Override

@@ -8,9 +8,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
 import android.net.Uri;
+import android.os.AsyncTask;
 import android.os.Bundle;
-import android.os.Handler;
-import android.os.Looper;
 import android.provider.OpenableColumns;
 import android.support.v4.view.GestureDetectorCompat;
 import android.util.Log;
@@ -22,14 +21,11 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 
 import com.google.android.gms.analytics.HitBuilders;
-import com.google.common.util.concurrent.ListeningExecutorService;
-import com.google.common.util.concurrent.MoreExecutors;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.Executors;
 
 import io.v.android.apps.reader.db.DB;
 import io.v.android.apps.reader.db.DB.DBList;
@@ -38,6 +34,7 @@ import io.v.android.apps.reader.model.Listener;
 import io.v.android.apps.reader.vdl.DeviceMeta;
 import io.v.android.apps.reader.vdl.DeviceSet;
 import io.v.android.apps.reader.vdl.File;
+import io.v.v23.verror.VException;
 
 /**
  * Activity that shows the contents of the selected pdf file.
@@ -59,8 +56,7 @@ public class PdfViewerActivity extends BaseReaderActivity {
     private DBList<DeviceSet> mDeviceSets;
     private DeviceSet mCurrentDS;
 
-    private ListeningExecutorService mThreadPool;
-    private Handler mHandler;
+    private CreateAndJoinDeviceSetTask mCreateAndJoinDeviceSetTask;
 
     /**
      * Helper methods for creating an intent to start a PdfViewerActivity.
@@ -82,9 +78,6 @@ public class PdfViewerActivity extends BaseReaderActivity {
         super.onCreate(savedInstanceState);
 
         setContentView(R.layout.activity_pdf_viewer);
-
-        mThreadPool = MoreExecutors.listeningDecorator(Executors.newFixedThreadPool(1));
-        mHandler = new Handler(Looper.getMainLooper());
 
         mPdfView = (PdfViewWrapper) findViewById(R.id.pdfview);
         mPdfView.init();
@@ -206,6 +199,15 @@ public class PdfViewerActivity extends BaseReaderActivity {
         }
     }
 
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+
+        if (mCreateAndJoinDeviceSetTask != null) {
+            mCreateAndJoinDeviceSetTask.cancel(true);
+        }
+    }
+
     // TODO(youngseokyoon): generalize these clone methods
     private DeviceSet cloneDeviceSet(DeviceSet ds) {
         if (ds == null) {
@@ -233,68 +235,8 @@ public class PdfViewerActivity extends BaseReaderActivity {
     }
 
     private void createAndJoinDeviceSet(final Uri fileUri) {
-        mThreadPool.submit(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    byte[] bytes = getBytesFromUri(fileUri);
-                    File file = createFile(bytes, getTitleFromUri(fileUri));
-                    final DeviceSet ds = createDeviceSet(file);
-
-                    // Join the device set from the UI thread.
-                    mHandler.post(new Runnable() {
-                        @Override
-                        public void run() {
-                            joinDeviceSet(ds);
-                        }
-                    });
-                } catch (Exception e) {
-                    Log.e(TAG, "Could not create the device set: " + e.getMessage(), e);
-
-                    // In case of an error, finish this activity and go back to the previous one.
-                    mHandler.post(new Runnable() {
-                        @Override
-                        public void run() {
-                            finish();
-                        }
-                    });
-                }
-            }
-        });
-    }
-
-    private File createFile(final byte[] bytes, final String title) throws IOException {
-        initProgress(R.string.progress_writing_pdf, bytes.length);
-
-        // Create a vdl File object representing this pdf file and put it in the db.
-        DB.FileBuilder builder;
-        try {
-            builder = getDB().getFileBuilder(title);
-        } catch (RuntimeException e) {
-            throw new IOException(e);
-        }
-
-        int cur = 0;
-        int available = bytes.length;
-        while (available > 0) {
-            int numBytes = Math.min(BLOCK_SIZE, available);
-            builder.write(bytes, cur, numBytes);
-            cur += numBytes;
-            available -= numBytes;
-
-            updateProgress(cur);
-        }
-
-        initProgress(R.string.progress_finishing_up_writing, -1);
-        File vFile = builder.build();
-
-        Log.i(TAG, "vFile created: " + vFile);
-        if (vFile == null) {
-            throw new IOException("Could not store the file content: " + title);
-        }
-        getDB().addFile(vFile);
-
-        return vFile;
+        mCreateAndJoinDeviceSetTask = new CreateAndJoinDeviceSetTask();
+        mCreateAndJoinDeviceSetTask.execute(fileUri);
     }
 
     @Override
@@ -349,8 +291,6 @@ public class PdfViewerActivity extends BaseReaderActivity {
     }
 
     private DeviceSet createDeviceSet(File vFile) {
-        initProgress(R.string.progress_creating_device_set, 1);
-
         String id = IdFactory.getRandomId();
         String fileId = vFile.getId();
         Map<String, DeviceMeta> devices = new HashMap<>();
@@ -358,14 +298,10 @@ public class PdfViewerActivity extends BaseReaderActivity {
         DeviceSet ds = new DeviceSet(id, fileId, devices);
         getDB().addDeviceSet(ds);
 
-        updateProgress(1);
-
         return ds;
     }
 
     private void joinDeviceSet(DeviceSet ds) {
-        showProgressWidgets(false);
-
         mPdfView.loadPdfFile("/file_id/" + ds.getFileId());
 
         // Create a new device meta, and update the device set with it.
@@ -395,48 +331,6 @@ public class PdfViewerActivity extends BaseReaderActivity {
         }
 
         mCurrentDS = null;
-    }
-
-    private byte[] getBytesFromUri(final Uri uri) throws IOException {
-        Log.i(TAG, "getBytesFromUri: " + uri.toString());
-
-        InputStream in = getContentResolver().openInputStream(uri);
-        int available = in.available();
-
-        initProgress(R.string.progress_reading_source_pdf, available);
-
-        byte[] result = new byte[available];
-        int cur = 0;
-        int bytesRead;
-
-        while ((bytesRead = in.read(result, cur, Math.min(BLOCK_SIZE, available))) != -1 &&
-                available > 0) {
-            cur += bytesRead;
-            available -= bytesRead;
-            updateProgress(cur);
-        }
-
-        in.close();
-
-        return result;
-    }
-
-    private String getTitleFromUri(Uri uri) {
-        try {
-            Cursor cursor = getContentResolver().query(uri, null, null, null, null);
-
-            int nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
-            cursor.moveToFirst();
-            return cursor.getString(nameIndex);
-        } catch (Exception e) {
-            handleException(e);
-
-            if (uri != null) {
-                return uri.getLastPathSegment();
-            }
-        }
-
-        return null;
     }
 
     private DeviceMeta getDeviceMeta() {
@@ -621,13 +515,59 @@ public class PdfViewerActivity extends BaseReaderActivity {
                 requestCode, resultCode));
     }
 
-    private void initProgress(final int progressTextRes, final int maxProgress) {
-        showProgressWidgets(true);
-        mHandler.post(new Runnable() {
-            @Override
-            public void run() {
-                mProgressText.setText(progressTextRes);
+    private void showProgressWidgets(final boolean showProgress) {
+        if (showProgress) {
+            mProgressText.setVisibility(View.VISIBLE);
+            mProgressBar.setVisibility(View.VISIBLE);
+            mPdfView.setVisibility(View.INVISIBLE);
+        } else {
+            mProgressText.setVisibility(View.INVISIBLE);
+            mProgressBar.setVisibility(View.INVISIBLE);
+            mPdfView.setVisibility(View.VISIBLE);
+        }
+    }
 
+    private class CreateAndJoinDeviceSetTask extends AsyncTask<Uri, Integer, DeviceSet> {
+
+        @Override
+        protected void onPreExecute() {
+            showProgressWidgets(true);
+        }
+
+        @Override
+        protected DeviceSet doInBackground(Uri... uris) {
+            Uri uri = null;
+            try {
+                uri = uris[0];
+                Log.i(TAG, "CreateAndJoinDeviceSetTask$doInBackground: " + uri.toString());
+
+                byte[] bytes = getBytesFromUri(uri);
+                if (isCancelled()) {
+                    return null;
+                }
+
+                File file = createFile(bytes, getTitleFromUri(uri));
+                if (isCancelled()) {
+                    return null;
+                }
+
+                publishProgress(R.string.progress_creating_device_set, -1);
+                DeviceSet ds = createDeviceSet(file);
+
+                return ds;
+            } catch (Exception e) {
+                Log.e(TAG, "Could not create the device set for uri: " + uri.toString() + ": "
+                        + e.getMessage(), e);
+                return null;
+            }
+        }
+
+        @Override
+        protected void onProgressUpdate(Integer... values) {
+            if (values.length == 2) {
+                mProgressText.setText(values[0]);
+
+                int maxProgress = values[1];
                 if (maxProgress >= 0) {
                     mProgressBar.setIndeterminate(false);
                     mProgressBar.setMax(maxProgress);
@@ -635,34 +575,110 @@ public class PdfViewerActivity extends BaseReaderActivity {
                 } else {
                     mProgressBar.setIndeterminate(true);
                 }
+            } else if (values.length == 1) {
+                mProgressBar.setProgress(values[0]);
             }
-        });
-    }
+        }
 
-    private void updateProgress(final int progress) {
-        mHandler.post(new Runnable() {
-            @Override
-            public void run() {
-                mProgressBar.setProgress(progress);
+        @Override
+        protected void onPostExecute(DeviceSet ds) {
+            PdfViewerActivity.this.mCreateAndJoinDeviceSetTask = null;
+
+            // In case of an error, finish this activity and go back to the previous one.
+            if (ds == null) {
+                finish();
+                return;
             }
-        });
-    }
 
-    private void showProgressWidgets(final boolean showProgress) {
-        mHandler.post(new Runnable() {
-            @Override
-            public void run() {
-                if (showProgress) {
-                    mProgressText.setVisibility(View.VISIBLE);
-                    mProgressBar.setVisibility(View.VISIBLE);
-                    mPdfView.setVisibility(View.INVISIBLE);
-                } else {
-                    mProgressText.setVisibility(View.INVISIBLE);
-                    mProgressBar.setVisibility(View.INVISIBLE);
-                    mPdfView.setVisibility(View.VISIBLE);
+            showProgressWidgets(false);
+            joinDeviceSet(ds);
+        }
+
+        private byte[] getBytesFromUri(final Uri uri) throws IOException {
+            Log.i(TAG, "getBytesFromUri: " + uri.toString());
+
+            InputStream in = getContentResolver().openInputStream(uri);
+            int total = in.available();
+            int available = total;
+
+            publishProgress(R.string.progress_reading_source_pdf, total);
+
+            byte[] result = new byte[available];
+            int cur = 0;
+            int bytesRead;
+
+            while ((bytesRead = in.read(result, cur, Math.min(BLOCK_SIZE, available))) != -1 &&
+                    available > 0) {
+                cur += bytesRead;
+                available -= bytesRead;
+
+                publishProgress(cur);
+
+                if (isCancelled()) {
+                    in.close();
+                    return null;
                 }
             }
-        });
+
+            in.close();
+
+            return result;
+        }
+
+        private File createFile(final byte[] bytes, final String title) throws Exception {
+
+            publishProgress(R.string.progress_writing_pdf, bytes.length);
+
+            // Create a vdl File object representing this pdf file and put it in the db.
+            DB.FileBuilder builder;
+            builder = getDB().getFileBuilder(title);
+
+            int cur = 0;
+            int available = bytes.length;
+
+            while (available > 0) {
+                int numBytes = Math.min(BLOCK_SIZE, available);
+                builder.write(bytes, cur, numBytes);
+                cur += numBytes;
+                available -= numBytes;
+
+                publishProgress(cur);
+
+                if (isCancelled()) {
+                    builder.cancel();
+                    return null;
+                }
+            }
+
+            publishProgress(R.string.progress_finishing_up_writing, -1);
+            File vFile = builder.build();
+
+            Log.i(TAG, "vFile created: " + vFile);
+            if (vFile == null) {
+                throw new VException("Could not store the file content: " + title);
+            }
+            getDB().addFile(vFile);
+
+            return vFile;
+        }
+
+        private String getTitleFromUri(Uri uri) {
+            try {
+                Cursor cursor = getContentResolver().query(uri, null, null, null, null);
+
+                int nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
+                cursor.moveToFirst();
+                return cursor.getString(nameIndex);
+            } catch (Exception e) {
+                handleException(e);
+
+                if (uri != null) {
+                    return uri.getLastPathSegment();
+                }
+            }
+
+            return null;
+        }
     }
 
 }

@@ -45,6 +45,7 @@ public interface DB {
 
     interface FileBuilder extends Closeable {
         void write(byte[] b, int off, int len) throws IOException;
+        void cancel();
         File build();
     }
 
@@ -159,7 +160,7 @@ public interface DB {
      * @param title title of this file.
      * @return      a {@link FileBuilder} object for building the {@link File}.
      */
-    FileBuilder getFileBuilder(String title);
+    FileBuilder getFileBuilder(String title) throws Exception;
 
     /**
      * Opens an {@link InputStream} for the given file.
