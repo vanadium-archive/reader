@@ -15,7 +15,6 @@ import android.support.v4.view.GestureDetectorCompat;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.view.MotionEvent;
 import android.view.View;
 import android.widget.ProgressBar;
 import android.widget.TextView;
@@ -80,8 +79,6 @@ public class PdfViewerActivity extends BaseReaderActivity {
         setContentView(R.layout.activity_pdf_viewer);
 
         mPdfView = (PdfViewWrapper) findViewById(R.id.pdfview);
-        mPdfView.init();
-
         mProgressBar = (ProgressBar) findViewById(R.id.pdf_progress_bar);
         mProgressText = (TextView) findViewById(R.id.pdf_progress_text);
 
@@ -102,12 +99,7 @@ public class PdfViewerActivity extends BaseReaderActivity {
                     }
                 });
 
-        mPdfView.setOnTouchListener(new View.OnTouchListener() {
-            @Override
-            public boolean onTouch(View v, MotionEvent event) {
-                return swipeDetector.onTouchEvent(event);
-            }
-        });
+        mPdfView.setOnTouchListener((v, e) -> swipeDetector.onTouchEvent(e));
     }
 
     @Override
@@ -304,7 +296,13 @@ public class PdfViewerActivity extends BaseReaderActivity {
     private void joinDeviceSet(DeviceSet ds) {
         showProgressWidgets(false);
 
-        mPdfView.loadPdfFile("/file_id/" + ds.getFileId());
+        try {
+            mPdfView.loadPdfFile(ds.getFileId());
+        } catch(IOException e) {
+            handleException(e);
+            finish();
+            return;
+        }
 
         // Create a new device meta, and update the device set with it.
         Log.i(TAG, "Joining device set: " + ds.getId());

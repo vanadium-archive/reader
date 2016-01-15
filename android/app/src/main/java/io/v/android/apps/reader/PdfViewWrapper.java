@@ -5,20 +5,18 @@
 package io.v.android.apps.reader;
 
 import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.pdf.PdfRenderer;
+import android.graphics.pdf.PdfRenderer.Page;
+import android.os.ParcelFileDescriptor;
 import android.util.AttributeSet;
-import android.util.Log;
-import android.webkit.JavascriptInterface;
-import android.webkit.WebChromeClient;
-import android.webkit.WebResourceRequest;
-import android.webkit.WebResourceResponse;
-import android.webkit.WebSettings;
-import android.webkit.WebView;
-import android.webkit.WebViewClient;
+import android.widget.ImageView;
 
-import com.google.common.util.concurrent.FutureCallback;
-import com.google.common.util.concurrent.Futures;
-import com.google.common.util.concurrent.SettableFuture;
+import com.google.common.io.ByteStreams;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 
 import io.v.android.apps.reader.db.DB;
@@ -28,110 +26,72 @@ import io.v.android.apps.reader.db.DB;
  *
  * May be replaced with another library if needed.
  */
-public class PdfViewWrapper extends WebView {
+public class PdfViewWrapper extends ImageView {
 
-    private static final String TAG = PdfViewWrapper.class.getSimpleName();
-
-    private SettableFuture<Boolean> mPageLoaded;
-    private int mPageCount;
+    private PdfRenderer mRenderer;
 
     public PdfViewWrapper(Context context, AttributeSet attrs) {
         super(context, attrs);
-
-        mPageLoaded = SettableFuture.create();
-    }
-
-    public void init() {
-        WebSettings settings = getSettings();
-        settings.setJavaScriptEnabled(true);
-        settings.setAllowUniversalAccessFromFileURLs(true);
-        setWebChromeClient(new WebChromeClient());
-        setWebViewClient(new PdfViewClient());
-        addJavascriptInterface(new JSInterface(), "android");
-
-        loadUrl("file:///android_asset/pdfjs/pdf-web-view.html");
     }
 
     /**
      * Loads the PDF file at the given path into the pdf.js component within WebView.
      */
-    public void loadPdfFile(final String filePath) {
-        Futures.addCallback(mPageLoaded, new FutureCallback<Boolean>() {
-            @Override
-            public void onSuccess(Boolean result) {
-                Log.i(TAG, "loadPdfFile called: " + filePath);
-                evaluateJavascript("window.client.open(\"" + filePath + "\");", null);
+    public void loadPdfFile(final String fileId) throws IOException {
+        File pdfFile = new File(getContext().getCacheDir(), fileId);
 
-                // leave the page count as 0 until the page count value is properly set from JS side.
-                mPageCount = 0;
-            }
+        try (InputStream in = DB.Singleton.get(getContext()).getInputStreamForFile(fileId);
+             FileOutputStream out = new FileOutputStream(pdfFile)) {
+            ByteStreams.copy(in, out);
+        }
 
-            @Override
-            public void onFailure(Throwable t) {
-                // Nothing to do.
-            }
-        });
+        mRenderer = new PdfRenderer(
+                ParcelFileDescriptor.open(pdfFile, ParcelFileDescriptor.MODE_READ_ONLY));
+
+        setPage(1);
     }
 
     /**
      * Jumps to the given page number. Page number is one-based.
      *
-     * @param page the page number to jump to. Page number is one-based.
+     * @param pageNumber the page number to jump to. Page number is one-based.
      */
-    public void setPage(int page) {
-        evaluateJavascript("window.client.page(" + page + ");", null);
+    public void setPage(int pageNumber) {
+        if (pageNumber < 1 || pageNumber > mRenderer.getPageCount()) {
+            // TODO(youngseokyoon): display not available page.
+            return;
+        }
+
+        try (Page page = mRenderer.openPage(pageNumber - 1)) {
+            // Create a bitmap that fits the entire view while keeping the aspect ratio of the source.
+            float pageRatio = (float) page.getWidth() / (float) page.getHeight();
+            float viewRatio = (float) getWidth() / (float) getHeight();
+
+            Bitmap bitmap;
+            if (pageRatio >= viewRatio) {
+                bitmap = Bitmap.createBitmap(
+                        getWidth(),
+                        (int) (getWidth() / pageRatio),
+                        Bitmap.Config.ARGB_8888);
+            } else {
+                bitmap = Bitmap.createBitmap(
+                        (int) (getHeight() * pageRatio),
+                        getHeight(),
+                        Bitmap.Config.ARGB_8888);
+            }
+
+            // Render the page on the bitmap and display it on the ImageView.
+            page.render(bitmap, null, null, Page.RENDER_MODE_FOR_DISPLAY);
+            setImageBitmap(bitmap);
+        }
     }
 
     public int getPageCount() {
-        return mPageCount;
-    }
-
-    /**
-     * This class provides public methods that can be called from the JavaScript side.
-     */
-    private class JSInterface {
-
-        private final String TAG = JSInterface.class.getSimpleName();
-
-        @JavascriptInterface
-        public void setPageCount(int pageCount) {
-            Log.d(TAG, "setPageCount(" + pageCount + ") called.");
-            mPageCount = pageCount;
-        }
-    }
-
-    private class PdfViewClient extends WebViewClient {
-        @Override
-        public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
-            Log.i(TAG, "shouldInterceptRequest called");
-
-            String path = request.getUrl().getPath();
-            if (!path.startsWith("/file_id/")) {
-                Log.i(TAG, "Not a file id path. Falling back to super.shouldInterceptRequest");
-                return super.shouldInterceptRequest(view, request);
-            }
-
-            String fileId = request.getUrl().getLastPathSegment();
-            Log.i(TAG, "File ID: " + fileId);
-
-            // Should NOT close the stream here, so that the stream can be read by WebView.
-            InputStream in = DB.Singleton.get(getContext()).getInputStreamForFile(fileId);
-
-            if (in != null) {
-                Log.i(TAG, "returning a custom WebResourceResponse");
-                return new WebResourceResponse("application/pdf", "binary", in);
-            } else {
-                Log.i(TAG, "Could not open an input stream. " +
-                        "Falling back to super.shouldInterceptRequest");
-                return super.shouldInterceptRequest(view, request);
-            }
+        if (mRenderer == null) {
+            return 0;
         }
 
-        @Override
-        public void onPageFinished(WebView view, String url) {
-            super.onPageFinished(view, url);
-            mPageLoaded.set(true);
-        }
+        return mRenderer.getPageCount();
     }
 
 }

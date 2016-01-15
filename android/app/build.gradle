@@ -104,23 +104,6 @@ vdl {
     packageTranslations += 'vdl->io/v/android/apps/reader/vdl'
 }
 
-// The two tasks below are used for copying the pdf.js files into assets/pdfjs directory.
-task generatePdfJsFiles(type: Exec) {
-    workingDir '../../web'
-    commandLine 'make', 'public/pdf-web-view.js'
-}
-
-task copyPdfJsFiles(type: Copy, dependsOn: 'generatePdfJsFiles') {
-    from('../../web/public') {
-        include 'pdf*'
-    }
-
-    into 'src/main/assets/pdfjs'
-}
-
-// These two tasks should run before 'preBuild' task
-tasks['preBuild'].dependsOn('copyPdfJsFiles')
-
 
 // To use the local version of vanadium-android library,
 // use "-DuseLocalVanadiumLib" parameter in the gradle command.

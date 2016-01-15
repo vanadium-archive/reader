@@ -181,7 +181,7 @@ public class FakeDB implements DB {
 
                 String id = VomUtil.bytesToHexString(mDigest.digest());
 
-                java.io.File jFile = new java.io.File(mContext.getCacheDir(), id);
+                java.io.File jFile = new java.io.File(mContext.getCacheDir(), id + ".db");
                 try (FileOutputStream out = new FileOutputStream(jFile)) {
                     out.write(mOutputStream.toByteArray());
                 } catch (IOException e) {
@@ -270,7 +270,7 @@ public class FakeDB implements DB {
 
     @Override
     public InputStream getInputStreamForFile(String fileId) {
-        java.io.File jFile = new java.io.File(mContext.getCacheDir(), fileId);
+        java.io.File jFile = new java.io.File(mContext.getCacheDir(), fileId + ".db");
         try {
             return new FileInputStream(jFile);
         } catch (IOException e) {

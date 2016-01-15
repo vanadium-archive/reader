@@ -16,21 +16,24 @@
         android:layout_width="match_parent"
         android:layout_height="fill_parent"
         android:layout_alignParentTop="true"
+        android:adjustViewBounds="true"
+        android:background="@android:color/white"
+        android:clickable="true"
         android:visibility="invisible" />
 
     <ProgressBar
         android:id="@+id/pdf_progress_bar"
+        style="@android:style/Widget.Material.Light.ProgressBar.Horizontal"
         android:layout_width="fill_parent"
         android:layout_height="wrap_content"
-        android:layout_centerVertical="true"
-        style="@android:style/Widget.Material.Light.ProgressBar.Horizontal" />
+        android:layout_centerVertical="true" />
 
     <TextView
         android:id="@+id/pdf_progress_text"
         android:layout_width="fill_parent"
         android:layout_height="wrap_content"
         android:layout_above="@id/pdf_progress_bar"
-        android:textColor="@color/textPrimary"
-        android:gravity="center" />
+        android:gravity="center"
+        android:textColor="@color/textPrimary" />
 
 </RelativeLayout>
