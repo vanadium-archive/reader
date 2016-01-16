@@ -93,6 +93,8 @@ public class SyncbaseDB implements DB {
     private static final String TABLE_DEVICES = "devices";
     private static final String TABLE_DEVICE_SETS = "deviceSets";
 
+    private static final int SYNCGROUP_JOIN_DELAY = 5000;
+
     private Permissions mPermissions;
     private Context mContext;
     private VContext mVContext;
@@ -297,7 +299,10 @@ public class SyncbaseDB implements DB {
             return;
         }
 
-        joinSyncgroup();
+        // TODO(youngseokyoon): investigate why this is needed.
+        // Join the syncgroup a few seconds later to make sure that the syncgroup is ready.
+        Handler handler = new Handler();
+        handler.postDelayed(() -> joinSyncgroup(), SYNCGROUP_JOIN_DELAY);
     }
 
     /**

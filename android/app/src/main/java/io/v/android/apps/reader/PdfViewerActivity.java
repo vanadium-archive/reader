@@ -302,6 +302,8 @@ public class PdfViewerActivity extends BaseReaderActivity {
     }
 
     private void joinDeviceSet(DeviceSet ds) {
+        showProgressWidgets(false);
+
         mPdfView.loadPdfFile("/file_id/" + ds.getFileId());
 
         // Create a new device meta, and update the device set with it.
@@ -590,7 +592,6 @@ public class PdfViewerActivity extends BaseReaderActivity {
                 return;
             }
 
-            showProgressWidgets(false);
             joinDeviceSet(ds);
         }
 
