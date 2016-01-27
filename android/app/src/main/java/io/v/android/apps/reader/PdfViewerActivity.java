@@ -34,6 +34,7 @@ import io.v.android.apps.reader.vdl.DeviceMeta;
 import io.v.android.apps.reader.vdl.DeviceSet;
 import io.v.android.apps.reader.vdl.File;
 import io.v.v23.verror.VException;
+import java8.util.stream.StreamSupport;
 
 /**
  * Activity that shows the contents of the selected pdf file.
@@ -166,7 +167,10 @@ public class PdfViewerActivity extends BaseReaderActivity {
 
             // Get the device set from the DB and join it.
             DeviceSet ds = mDeviceSets.getItemById(intent.getStringExtra(EXTRA_DEVICE_SET_ID));
-            joinDeviceSet(ds);
+
+            // Use the post method to join the device set
+            // only after the initial view layout is performed.
+            mPdfView.post(() -> joinDeviceSet(ds));
         } else if (intent.getData() != null) {
             /**
              * Case #2.
@@ -274,8 +278,8 @@ public class PdfViewerActivity extends BaseReaderActivity {
         getDB().updateDeviceSet(mCurrentDS);
     }
 
-    private DeviceMeta createDeviceMeta() {
-        int page = 1;
+    private DeviceMeta createDeviceMeta(int initialPage) {
+        int page = initialPage;
         int zoom = 1;
         boolean linked = true;
 
@@ -296,17 +300,28 @@ public class PdfViewerActivity extends BaseReaderActivity {
     private void joinDeviceSet(DeviceSet ds) {
         showProgressWidgets(false);
 
+        Log.i(TAG, "Joining device set: " + ds.getId());
+
+        // Get the last page number of the first consecutive set of pages in the device set.
+        int lastPage = StreamSupport.stream(ds.getDevices().values())
+                .map(DeviceMeta::getPage)
+                .sorted()
+                .reduce((x, y) -> (y - x) > 1 ? x : y)
+                .orElse(0);
+
+        // Create a new device meta, and update the device set with it.
+        // Set the initial page as lastPage + 1.
+        DeviceMeta dm = createDeviceMeta(lastPage + 1);
+
+        // Load the pdf file.
         try {
-            mPdfView.loadPdfFile(ds.getFileId());
+            mPdfView.loadPdfFile(ds.getFileId(), dm.getPage());
         } catch(IOException e) {
             handleException(e);
             finish();
             return;
         }
 
-        // Create a new device meta, and update the device set with it.
-        Log.i(TAG, "Joining device set: " + ds.getId());
-        DeviceMeta dm = createDeviceMeta();
         // TODO(youngseokyoon): don't wait till these operations are finished.
         ds.getDevices().put(dm.getDeviceId(), dm);
         getDB().updateDeviceSet(ds);

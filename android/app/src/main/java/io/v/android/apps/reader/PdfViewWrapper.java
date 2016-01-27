@@ -37,7 +37,7 @@ public class PdfViewWrapper extends ImageView {
     /**
      * Loads the PDF file at the given path into the pdf.js component within WebView.
      */
-    public void loadPdfFile(final String fileId) throws IOException {
+    public void loadPdfFile(final String fileId, final int initialPage) throws IOException {
         File pdfFile = new File(getContext().getCacheDir(), fileId);
 
         try (InputStream in = DB.Singleton.get(getContext()).getInputStreamForFile(fileId);
@@ -48,7 +48,7 @@ public class PdfViewWrapper extends ImageView {
         mRenderer = new PdfRenderer(
                 ParcelFileDescriptor.open(pdfFile, ParcelFileDescriptor.MODE_READ_ONLY));
 
-        setPage(1);
+        setPage(initialPage);
     }
 
     /**
