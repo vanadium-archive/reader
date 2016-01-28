@@ -95,8 +95,10 @@ dependencies {
     compile 'io.v:vanadium-android:1.0'
     compile 'io.v:baku-toolkit:0.3.0'
 
+    testCompile 'org.robolectric:robolectric:3.0'
+
     // Required by baku-toolkit.
-    apk ('org.slf4j:slf4j-android:1.7.13')
+    compile 'org.slf4j:slf4j-android:1.7.13'
 }
 
 vdl {

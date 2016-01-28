@@ -302,16 +302,10 @@ public class PdfViewerActivity extends BaseReaderActivity {
 
         Log.i(TAG, "Joining device set: " + ds.getId());
 
-        // Get the last page number of the first consecutive set of pages in the device set.
-        int lastPage = StreamSupport.stream(ds.getDevices().values())
-                .map(DeviceMeta::getPage)
-                .sorted()
-                .reduce((x, y) -> (y - x) > 1 ? x : y)
-                .orElse(0);
+        int initialPage = determineInitialPage(ds);
 
         // Create a new device meta, and update the device set with it.
-        // Set the initial page as lastPage + 1.
-        DeviceMeta dm = createDeviceMeta(lastPage + 1);
+        DeviceMeta dm = createDeviceMeta(initialPage);
 
         // Load the pdf file.
         try {
@@ -327,6 +321,18 @@ public class PdfViewerActivity extends BaseReaderActivity {
         getDB().updateDeviceSet(ds);
 
         mCurrentDS = ds;
+    }
+
+    static int determineInitialPage(final DeviceSet ds) {
+        // Get the last page number of the first consecutive set of pages in the device set.
+        int lastPage = StreamSupport.stream(ds.getDevices().values())
+                .map(DeviceMeta::getPage)
+                .sorted()
+                .reduce((x, y) -> (y - x) > 1 ? x : y)
+                .orElse(0);
+
+        // Set the initial page as lastPage + 1.
+        return lastPage + 1;
     }
 
     private void leaveDeviceSet() {
