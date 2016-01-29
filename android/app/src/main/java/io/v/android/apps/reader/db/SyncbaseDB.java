@@ -28,6 +28,7 @@ import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Executors;
 
 import io.v.android.apps.reader.model.DeviceInfoFactory;
 import io.v.android.apps.reader.model.Listener;
@@ -44,9 +45,7 @@ import io.v.v23.InputChannels;
 import io.v.v23.OptionDefs;
 import io.v.v23.Options;
 import io.v.v23.VIterable;
-import io.v.v23.context.CancelableVContext;
 import io.v.v23.context.VContext;
-import io.v.v23.namespace.Namespace;
 import io.v.v23.rpc.Server;
 import io.v.v23.security.BlessingPattern;
 import io.v.v23.security.Blessings;
@@ -84,9 +83,6 @@ import static io.v.v23.VFutures.sync;
 public class SyncbaseDB implements DB {
 
     private static final String TAG = SyncbaseDB.class.getSimpleName();
-
-    // TODO(youngseokyoon): change this back to the domain name, once the dns issue is resolved.
-    private static final String GLOBAL_MOUNT_TABLE = "/104.197.5.136:8101";
 
     private static final String SYNCBASE_APP = "reader";
     private static final String SYNCBASE_DB = "db";
@@ -136,13 +132,7 @@ public class SyncbaseDB implements DB {
                 }
             }
 
-            // TODO(youngseokyoon): take this code out, once the dns issue is resolved.
-            try {
-                Namespace n = V.getNamespace(mVContext);
-                n.setRoots(ImmutableList.of("/104.197.5.136:8101"));
-            } catch (VException e) {
-                handleError("Could not change the global mount table address: " + e.getMessage());
-            }
+            mVContext = V.withExecutor(mVContext, Executors.newSingleThreadExecutor());
 
             try {
                 mVContext = V.withListenSpec(
@@ -160,7 +150,7 @@ public class SyncbaseDB implements DB {
                 Constants.ADMIN.getValue(), acl,
                 Constants.RESOLVE.getValue(), acl,
                 Constants.DEBUG.getValue(), acl));
-        getBlessings();
+        getBlessings(activity);
     }
 
     @Override
@@ -173,9 +163,9 @@ public class SyncbaseDB implements DB {
         return mInitialized != null && mInitialized.isDone();
     }
 
-    private void getBlessings() {
+    private void getBlessings(Activity activity) {
         ListenableFuture<Blessings> blessingsFuture = BlessingsManager
-                .getBlessings(mContext, "VanadiumBlessings", true);
+                .getBlessings(mVContext, activity, "VanadiumBlessings", true);
 
         Futures.addCallback(blessingsFuture, new FutureCallback<Blessings>() {
             @Override
@@ -283,7 +273,6 @@ public class SyncbaseDB implements DB {
 
         List<String> mountTables = ImmutableList.of(
                 NamingUtil.join(
-                        GLOBAL_MOUNT_TABLE,
                         "users",
                         mUsername,
                         "reader/rendezvous"
@@ -606,7 +595,7 @@ public class SyncbaseDB implements DB {
 
         private final String TAG;
 
-        private CancelableVContext mCancelableVContext;
+        private VContext mCancelableVContext;
         private Handler mHandler;
         private Listener mListener;
         private ResumeMarker mResumeMarker;
