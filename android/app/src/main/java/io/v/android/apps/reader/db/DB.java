@@ -7,6 +7,8 @@ package io.v.android.apps.reader.db;
 import android.app.Activity;
 import android.content.Context;
 
+import com.google.common.util.concurrent.ListenableFuture;
+
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
@@ -57,6 +59,11 @@ public interface DB {
      * @param activity implements onActivityResult() to call into DB.onActivityResult.
      */
     void init(Activity activity);
+
+    /**
+     * Returns a ListenableFuture that completes once the database initialization is finished.
+     */
+    ListenableFuture<Void> onInitialized();
 
     /**
      * Tells if initialization process is completed.

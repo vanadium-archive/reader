@@ -17,6 +17,7 @@ import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.SettableFuture;
 
 import org.apache.commons.io.FileUtils;
 
@@ -99,7 +100,8 @@ public class SyncbaseDB implements DB {
     private Context mContext;
     private VContext mVContext;
     private SyncbaseHierarchy mLocalSB;
-    private boolean mInitialized;
+
+    private SettableFuture<Void> mInitialized;
 
     private String mUsername;
     private String mSyncgroupName;
@@ -110,10 +112,12 @@ public class SyncbaseDB implements DB {
 
     @Override
     public void init(Activity activity) {
-        if (isInitialized()) {
-            // Already initialized.
+        // Make sure that the initialization logic runs at most once.
+        if (mInitialized != null) {
             return;
         }
+
+        mInitialized = SettableFuture.create();
 
         if (mVContext == null) {
             if (activity instanceof VAndroidContextMixin) {
@@ -160,8 +164,13 @@ public class SyncbaseDB implements DB {
     }
 
     @Override
-    public boolean isInitialized() {
+    public ListenableFuture<Void> onInitialized() {
         return mInitialized;
+    }
+
+    @Override
+    public boolean isInitialized() {
+        return mInitialized != null && mInitialized.isDone();
     }
 
     private void getBlessings() {
@@ -325,7 +334,7 @@ public class SyncbaseDB implements DB {
             return;
         }
 
-        mInitialized = true;
+        mInitialized.set(null);
 
         // When successfully joined the syncgroup, first register the device information.
         registerDevice();
@@ -424,7 +433,7 @@ public class SyncbaseDB implements DB {
 
     @Override
     public DBList<File> getFileList() {
-        if (!mInitialized) {
+        if (!isInitialized()) {
             return new EmptyList<>();
         }
 
@@ -433,7 +442,7 @@ public class SyncbaseDB implements DB {
 
     @Override
     public DBList<Device> getDeviceList() {
-        if (!mInitialized) {
+        if (!isInitialized()) {
             return new EmptyList<>();
         }
 
@@ -442,7 +451,7 @@ public class SyncbaseDB implements DB {
 
     @Override
     public DBList<DeviceSet> getDeviceSetList() {
-        if (!mInitialized) {
+        if (!isInitialized()) {
             return new EmptyList<>();
         }
 

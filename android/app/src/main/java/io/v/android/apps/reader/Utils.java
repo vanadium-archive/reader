@@ -8,12 +8,15 @@ import android.Manifest;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.os.Environment;
+import android.os.Handler;
+import android.os.Looper;
 import android.support.v4.content.ContextCompat;
 
 import java.io.File;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
+import java.util.concurrent.Executor;
 
 /**
  * Utility class which contains useful static methods.
@@ -52,6 +55,22 @@ public class Utils {
         SimpleDateFormat formatter = new SimpleDateFormat(
                 "yyyyMMdd-HHmmss.SSS", Locale.getDefault());
         return formatter.format(new Date());
+    }
+
+    /**
+     * Returns an {@link Executor} which runs the provided task in the main thread.
+     */
+    public static MainThreadExecutor mainThreadExecutor() {
+        return new MainThreadExecutor();
+    }
+
+    private static class MainThreadExecutor implements Executor {
+        private final Handler mHandler = new Handler(Looper.getMainLooper());
+
+        @Override
+        public void execute(Runnable command) {
+            mHandler.post(command);
+        }
     }
 
 }

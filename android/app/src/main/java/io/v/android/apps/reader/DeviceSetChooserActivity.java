@@ -14,7 +14,9 @@ import android.support.v7.widget.helper.ItemTouchHelper;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.view.View;
+
+import com.google.common.util.concurrent.FutureCallback;
+import com.google.common.util.concurrent.Futures;
 
 /**
  * Activity that displays all the active device sets of this user.
@@ -47,14 +49,11 @@ public class DeviceSetChooserActivity extends BaseReaderActivity {
 
         // Add device set FAB initialization
         mButtonAddDeviceSet = (FloatingActionButton) findViewById(R.id.button_add_device_set);
-        mButtonAddDeviceSet.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
-                intent.setType(Constants.PDF_MIME_TYPE);
-                if (intent.resolveActivity(getPackageManager()) != null) {
-                    startActivityForResult(intent, CHOOSE_PDF_FILE_REQUEST);
-                }
+        mButtonAddDeviceSet.setOnClickListener(view -> {
+            Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+            intent.setType(Constants.PDF_MIME_TYPE);
+            if (intent.resolveActivity(getPackageManager()) != null) {
+                startActivityForResult(intent, CHOOSE_PDF_FILE_REQUEST);
             }
         });
     }
@@ -63,21 +62,31 @@ public class DeviceSetChooserActivity extends BaseReaderActivity {
     protected void onStart() {
         super.onStart();
 
-        // The adapter for the recycler view
-        mAdapter = new DeviceSetListAdapter(this);
+        // Set the adapter only after the DB is initialized.
+        Futures.addCallback(getDB().onInitialized(), new FutureCallback<Void>() {
 
-        // When a file is clicked from the list, start the PdfViewerActivity.
-        mAdapter.setOnDeviceSetClickListener(new DeviceSetListAdapter.OnDeviceSetClickListener() {
             @Override
-            public void onDeviceSetClick(DeviceSetListAdapter adapter, View v, int position) {
-                Intent intent = PdfViewerActivity.createIntent(
-                        getApplicationContext(),
-                        adapter.getDeviceSetId(position));
-                startActivity(intent);
-            }
-        });
+            public void onSuccess(Void result) {
+                // The adapter for the recycler view
+                mAdapter = new DeviceSetListAdapter(DeviceSetChooserActivity.this);
 
-        mRecyclerView.setAdapter(mAdapter);
+                // When a file is clicked from the list, start the PdfViewerActivity.
+                mAdapter.setOnDeviceSetClickListener((adapter, v, position) -> {
+                    Intent intent = PdfViewerActivity.createIntent(
+                            getApplicationContext(),
+                            adapter.getDeviceSetId(position));
+                    startActivity(intent);
+                });
+
+                mRecyclerView.setAdapter(mAdapter);
+            }
+
+            @Override
+            public void onFailure(Throwable t) {
+                Log.e(TAG, "Could not initialize the database.", t);
+            }
+
+        }, Utils.mainThreadExecutor());
 
         // ItemTouchHelper for handling the swipe action.
         ItemTouchHelper.SimpleCallback touchCallback;
@@ -109,6 +118,10 @@ public class DeviceSetChooserActivity extends BaseReaderActivity {
             mAdapter.stop();
         }
         mAdapter = null;
+
+        if (mRecyclerView != null) {
+            mRecyclerView.setAdapter(null);
+        }
     }
 
     @Override

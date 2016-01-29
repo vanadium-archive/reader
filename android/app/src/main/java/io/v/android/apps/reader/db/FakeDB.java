@@ -8,6 +8,9 @@ import android.app.Activity;
 import android.content.Context;
 import android.util.Log;
 
+import com.google.common.util.concurrent.Futures;
+import com.google.common.util.concurrent.ListenableFuture;
+
 import java.io.ByteArrayOutputStream;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -211,6 +214,11 @@ public class FakeDB implements DB {
     @Override
     public void init(Activity activity) {
         // Nothing to do.
+    }
+
+    @Override
+    public ListenableFuture<Void> onInitialized() {
+        return Futures.immediateFuture(null);
     }
 
     @Override

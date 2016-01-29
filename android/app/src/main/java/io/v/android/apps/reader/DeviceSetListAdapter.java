@@ -49,13 +49,10 @@ public class DeviceSetListAdapter extends RecyclerView.Adapter<DeviceSetListAdap
             mTextViewId = (TextView) mCardView.findViewById(R.id.device_set_list_item_id);
             mTextViewDevices = (TextView) mCardView.findViewById(R.id.device_set_list_item_devices);
 
-            mCardView.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    if (mClickListener != null) {
-                        mClickListener.onDeviceSetClick(
-                                DeviceSetListAdapter.this, v, getLayoutPosition());
-                    }
+            mCardView.setOnClickListener(view -> {
+                if (mClickListener != null) {
+                    mClickListener.onDeviceSetClick(
+                            DeviceSetListAdapter.this, view, getLayoutPosition());
                 }
             });
         }
