@@ -17,7 +17,7 @@ test: test-android
 
 .PHONY:
 test-android:
-	$(GRADLE) -p android :app:test
+	$(GRADLE) -p android test
 
 .PHONY: vdl
 vdl:

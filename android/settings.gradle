@@ -1,4 +1,4 @@
-include ':app'
+include ':app', ':wear'
 
 if (System.getProperty('useLocalVanadiumLib') != null) {
     include ':lib', ':android-lib'

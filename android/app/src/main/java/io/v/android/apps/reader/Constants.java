@@ -11,5 +11,6 @@ public class Constants {
 
     public static final int REQUEST_CODE_SEEK_BLESSINGS = 200;
     public static final int REQUEST_CODE_PERMISSION_EXTERNAL_STORAGE = 201;
+    public static final int REQUEST_CODE_RESOLVE_ERROR = 1000;
 
 }

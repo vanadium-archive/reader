@@ -6,6 +6,7 @@ package io.v.android.apps.reader;
 
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentSender;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.AsyncTask;
@@ -20,9 +21,15 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 
 import com.google.android.gms.analytics.HitBuilders;
+import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.wearable.MessageApi;
+import com.google.android.gms.wearable.MessageEvent;
+import com.google.android.gms.wearable.Wearable;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -39,14 +46,18 @@ import java8.util.stream.StreamSupport;
 /**
  * Activity that shows the contents of the selected pdf file.
  */
-public class PdfViewerActivity extends BaseReaderActivity {
+public class PdfViewerActivity extends BaseReaderActivity
+        implements GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener,
+        MessageApi.MessageListener {
 
     private static final String TAG = PdfViewerActivity.class.getSimpleName();
     private static final int BLOCK_SIZE = 0x1000;   // 4K
 
-    // Category string used for Google Analytics tracking.
     private static final String CATEGORY_PAGE_NAVIGATION = "Page Navigation";
     private static final String EXTRA_DEVICE_SET_ID = "device_set_id";
+
+    private GoogleApiClient mGoogleApiClient;
+    private boolean mResolvingError = false;
 
     private PdfViewWrapper mPdfView;
     private ProgressBar mProgressBar;
@@ -101,11 +112,21 @@ public class PdfViewerActivity extends BaseReaderActivity {
                 });
 
         mPdfView.setOnTouchListener((v, e) -> swipeDetector.onTouchEvent(e));
+
+        mGoogleApiClient = new GoogleApiClient.Builder(this)
+                .addApi(Wearable.API)
+                .addConnectionCallbacks(this)
+                .addOnConnectionFailedListener(this)
+                .build();
     }
 
     @Override
     protected void onStart() {
         super.onStart();
+
+        if (!mResolvingError) {
+            mGoogleApiClient.connect();
+        }
 
         /**
          * Suppress the start process until the DB initialization is completed.
@@ -237,13 +258,17 @@ public class PdfViewerActivity extends BaseReaderActivity {
 
     @Override
     protected void onStop() {
-        super.onStop();
+        if (!mResolvingError) {
+            Wearable.MessageApi.removeListener(mGoogleApiClient, this);
+        }
 
         if (mDeviceSets != null) {
             mDeviceSets.discard();
         }
 
         leaveDeviceSet();
+
+        super.onStop();
     }
 
     @Override
@@ -264,6 +289,76 @@ public class PdfViewerActivity extends BaseReaderActivity {
             default:
                 return super.onOptionsItemSelected(item);
         }
+    }
+
+    @Override //ConnectionCallbacks
+    public void onConnected(Bundle connectionHint) {
+        Log.i(TAG, "Google API Client was connected");
+        mResolvingError = false;
+        Wearable.MessageApi.addListener(mGoogleApiClient, this);
+    }
+
+    @Override //ConnectionCallbacks
+    public void onConnectionSuspended(int cause) {
+        Log.i(TAG, "Connection to Google API client was suspended");
+    }
+
+    @Override //OnConnectionFailedListener
+    public void onConnectionFailed(ConnectionResult result) {
+        if (mResolvingError) {
+            // Already attempting to resolve an error.
+            return;
+        } else if (result.hasResolution()) {
+            try {
+                mResolvingError = true;
+                result.startResolutionForResult(this, Constants.REQUEST_CODE_RESOLVE_ERROR);
+            } catch (IntentSender.SendIntentException e) {
+                // There was an error with the resolution intent. Try again.
+                mGoogleApiClient.connect();
+            }
+        } else {
+            Log.e(TAG, "Connection to Google API client has failed");
+            mResolvingError = false;
+            Wearable.MessageApi.removeListener(mGoogleApiClient, this);
+        }
+    }
+
+    @Override //MessageListener
+    public void onMessageReceived(final MessageEvent messageEvent) {
+        Log.i(TAG, "onMessageReceived() A message from watch was received:" + messageEvent
+                .getRequestId() + " " + messageEvent.getPath());
+
+        if (PageControlMessage.PATH.equals(messageEvent.getPath())) {
+            String message = new String(messageEvent.getData(), StandardCharsets.UTF_8);
+            switch (message) {
+                case PageControlMessage.TOGGLE_LINK:
+                    toggleLinkedState();
+                    break;
+
+                case PageControlMessage.PREV_PAGE:
+                    prevPage();
+                    break;
+
+                case PageControlMessage.NEXT_PAGE:
+                    nextPage();
+                    break;
+
+                // Ignore all other messages.
+                default:
+                    break;
+            }
+
+        }
+
+    }
+
+    private void toggleLinkedState() {
+        DeviceMeta dm = getDeviceMeta();
+        if (dm == null) {
+            return;
+        }
+
+        toggleLinkedState(dm.getLinked());
     }
 
     private void toggleLinkedState(boolean checked) {
