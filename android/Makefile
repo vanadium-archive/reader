@@ -1,6 +1,6 @@
 MAKEFLAGS += --warn-undefined-variables
 PATH := node_modules/.bin:$(PATH)
-NODE_DIR := $(shell jiri v23-profile list --info Target.InstallationDir nodejs)
+NODE_DIR := $(shell jiri profile list --info Target.InstallationDir v23:nodejs)
 PATH := $(PATH):$(NODE_DIR)/bin
 SHELL := /bin/bash
 VDLPATH := $(JIRI_ROOT)/release/go/src:$(shell cd ../common; pwd)
