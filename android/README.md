@@ -7,9 +7,9 @@ An example multi-device PDF reader app for Android platform, built using Vanadiu
 
 ## Dependencies
 
-The Java/Android development profile can be installed by running the following jiri command:
+The Java/Android development profile can be installed by running the following `jiri` command:
 
-    jiri v23-profile install java
+    jiri profile-v23 install v23:java
 
 ## Building
 
@@ -37,14 +37,14 @@ When you want to force update the dependencis, add `--refresh-dependencies` para
 
     ./gradlew :app:assembleDebug --refresh-dependencies
 
-## Running the cloud Syncbase instance
+## Running the Cloudsync instance
 
 To make the synchronization work properly,
-there needs to be a cloud Syncbase instance running, which hosts the Syncgroup for the Reader app.
+there needs to be a Cloudsync instance running, which hosts the Syncgroup for the Reader app.
 
-To run the cloudsync instance, run the following command from this directory:
+To run the Cloudsync instance, run the following command from this directory:
 
-    make -C `git rev-parse --show-toplevel`/web clean cloudsync
+    make -C `git rev-parse --show-toplevel`/cloudsync clean cloudsync
 
 # Testing
 
@@ -83,7 +83,7 @@ To run the Appium server:
 
 The reader app needs a cloud available peer to synchronize with, to provide this run the `cloudsync` Syncbase instance with the blessings of the same user who owns the Android device.
 
-    make -C `git rev-parse --show-toplevel`/web clean cloudsync
+    make -C `git rev-parse --show-toplevel`/cloudsync clean cloudsync
 
 **NOTE**: Be sure to login to the Google OAuth with the same email address as the account that owns the phone.
 
@@ -91,7 +91,7 @@ The reader app needs a cloud available peer to synchronize with, to provide this
 
 With the `cloudsync` service and the Appium server running the tests can now be run with one caveat: **be sure to unlock the phone**.
 
-    device-id=<device-id> make test-integration
+    udid=<device-id> make test-integration
 
 Either the variable `device-id` or the environment variable `$DEVICE_ID` can be used. The command above will execute the tests written in JS that match `test/test-*.js`.
 

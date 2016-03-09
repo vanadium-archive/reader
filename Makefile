@@ -1,26 +1,16 @@
 MAKEFLAGS += --warn-undefined-variables
 SHELL := /bin/bash
-GRADLE := android/gradlew
+GRADLE := ./android/gradlew
 
 .SHELLFLAGS := -eu -o pipefail -c
-.DEFAULT_GOAL := all
-.SUFFIXES:
+.PHONY: clean cloudsync test
 
-.PHONY:
+cloudsync:
+	$(MAKE) -C cloudsync
+
 clean:
-	$(MAKE) -C web clean
 	$(GRADLE) -p android clean
+	$(MAKE) -C cloudsync clean
 
-.PHONY:
-test: test-android
-	$(MAKE) -C web test
-
-.PHONY:
-test-android:
+test:
 	$(GRADLE) -p android test
-
-.PHONY: vdl
-vdl:
-	$(MAKE) -C web vdl
-	$(GRADLE) -p android vdl
-

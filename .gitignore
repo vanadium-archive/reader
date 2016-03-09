@@ -1,18 +1,10 @@
 /.jiri
-node_modules
 *.log
 
-web/bin/principal
-web/bin/syncbased
-web/coverage
-web/credentials
-web/disk.html
-web/public/bundle.*
-web/tmp
-web/public/pdf-web-view.js
-web/public/*.pdf
+cloudsync/bin/principal
+cloudsync/bin/syncbased
+cloudsync/credentials
+cloudsync/tmp
 
 # VDL generated stubs should be ignored
-web/browser/vanadium/v.io/*
-web/browser/vanadium/vdl/*
 generated-src
