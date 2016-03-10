@@ -18,7 +18,8 @@ upgrade:
 
 .PHONY: analyze
 analyze:
-	dartanalyzer lib/main.dart
+	@echo "=== Analyzing Dart code ==="
+	dartanalyzer lib/main.dart --lints --fatal-hints --fatal-warnings
 
 .PHONY: fmt
 fmt: packages
@@ -27,3 +28,11 @@ fmt: packages
 doc:
 	dartdoc
 	@touch $@
+
+# TODO(jasoncampbell): this task needs to use the jiri profile for flutter.
+# NOTE: $FLUTTER_ENGINE is automatically picked up by flutter but is explcitly
+# set here for calrity until the correct path can be set using a jiri profile.
+.PHONY: test
+test: analyze
+	@echo "=== Running tests ==="
+	flutter test --engine-src-path $(FLUTTER_ENGINE)/src
