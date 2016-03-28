@@ -5,12 +5,12 @@
 package reader
 
 import (
-  "v.io/v23/services/syncbase/nosql"
+  "v.io/v23/services/syncbase"
 )
 
 type File struct {
   Id string
-  Ref nosql.BlobRef
+  Ref syncbase.BlobRef
   Title string
   Size int64
   Type string
