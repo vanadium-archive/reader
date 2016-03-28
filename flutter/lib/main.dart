@@ -3,12 +3,12 @@
 // license that can be found in the LICENSE file.
 
 import 'package:flutter/material.dart';
-import 'components/flutter_demo.dart';
+import 'widgets/flutter_demo.dart';
 
 void main() {
   runApp(new MaterialApp(
       title: 'Flutter Demo',
-      routes: <String, RouteBuilder>{
-        '/': (RouteArguments args) => new FlutterDemo()
+      routes: <String, WidgetBuilder>{
+        '/': (BuildContext context) => new FlutterDemo()
       }));
 }
