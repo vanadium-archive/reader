@@ -2,8 +2,8 @@ name: reader
 description: Create a new Flutter project.
 dependencies:
   flutter:
-    path: ../../../../../flutter/packages/flutter
+    path: deps/flutter/packages/flutter
 dev_dependencies:
   test: ^0.12.6
   flutter_test:
-    path: ../../../../../flutter/packages/flutter_test
+    path: deps/flutter/packages/flutter_test
